@@ -1,0 +1,5 @@
+{
+  "name": "Vocal Academy",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "forwardPorts": [3000]
+}
