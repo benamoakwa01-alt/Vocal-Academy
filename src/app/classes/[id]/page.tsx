@@ -12,10 +12,10 @@ import AutoRefresh from "@/components/AutoRefresh";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 
 const errors: Record<string, string> = {
-  link: "Enter a valid https:// meeting link (Google Meet, Zoom, etc.).",
+  room: "We couldn't open the classroom. Please try again in a moment.",
   early: "It's too early to start this lesson.",
   late: "This class's scheduled time has passed.",
-  state: "This class can't be started in its current state.",
+  state: "This class can't be started in its current state, or someone has already started it.",
   denied: "You don't have permission to do that.",
   students: "The class was created, but some students could not be assigned.",
 };
@@ -82,14 +82,15 @@ export default async function ClassPage({
   const earliestStartIso = new Date(startMs - TUTOR_EARLY_START_MINUTES * 60000).toISOString();
 
   let people: { id: string; name: string; email: string | null; source: string; attended: boolean }[] = [];
-  let meetingUrl: string | null = null;
 
   if (canManage) {
     const { data: assigned } = await supabase.from("class_students").select("student_id").eq("class_id", id);
     const { data: attended } = await supabase.from("attendance").select("student_id").eq("class_id", id);
-    const enrolledRes = c.course_id
-      ? await supabase.from("enrollments").select("student_id").eq("course_id", c.course_id).eq("status", "active")
-      : { data: [] };
+    const enrolledRes = c.cohort_id
+      ? await supabase.from("enrollments").select("student_id").eq("cohort_id", c.cohort_id).eq("status", "active")
+      : c.course_id
+        ? await supabase.from("enrollments").select("student_id").eq("course_id", c.course_id).eq("status", "active")
+        : { data: [] };
 
     const assignedIds = new Set((assigned ?? []).map((r: { student_id: string }) => r.student_id));
     const enrolledIds = new Set((enrolledRes.data ?? []).map((r: { student_id: string }) => r.student_id));
@@ -103,15 +104,9 @@ export default async function ClassPage({
         id: p.id,
         name: p.full_name ?? "Unnamed",
         email: p.email,
-        source: assignedIds.has(p.id) ? "Assigned" : "Course",
+        source: assignedIds.has(p.id) ? "Assigned" : "Cohort",
         attended: attendedIds.has(p.id),
       }));
-    }
-
-    if (c.status === "live") {
-      const { data: session } = await supabase
-        .from("live_sessions").select("meeting_url").eq("class_id", id).maybeSingle();
-      meetingUrl = session?.meeting_url ?? null;
     }
   }
 
@@ -144,9 +139,6 @@ export default async function ClassPage({
             <h2 className="font-semibold">Start the lesson</h2>
             <form action={startClass} className="space-y-3">
               <input type="hidden" name="class_id" value={c.id} />
-              <input name="meeting_url" type="url" required disabled={!canStart}
-                placeholder="Paste your Google Meet / Zoom link (https://…)"
-                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black disabled:bg-gray-100" />
               <button disabled={!canStart}
                 className="w-full rounded-xl bg-black px-5 py-3 font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300 sm:w-auto">
                 START LESSON
@@ -168,12 +160,10 @@ export default async function ClassPage({
         {canManage && c.status === "live" && (
           <section className="space-y-3 rounded-xl bg-green-50 p-5 ring-2 ring-green-500">
             <h2 className="font-semibold text-green-800">Lesson is live</h2>
-            {meetingUrl && (
-              <a href={meetingUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-block rounded-xl bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700">
-                Open meeting
-              </a>
-            )}
+            <Link href={`/classes/${c.id}/room`}
+              className="inline-block rounded-xl bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700">
+              Enter classroom
+            </Link>
             <form action={endClass}>
               <input type="hidden" name="class_id" value={c.id} />
               <button className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-100">

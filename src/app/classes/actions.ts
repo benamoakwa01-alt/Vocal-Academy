@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { TUTOR_EARLY_START_MINUTES } from "@/lib/classes";
+import { ensureRoom, roomNameFor } from "@/lib/daily";
 
 function text(fd: FormData, key: string) {
   return String(fd.get(key) ?? "").trim();
@@ -10,14 +11,6 @@ function text(fd: FormData, key: string) {
 function parseDate(v: string) {
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d;
-}
-function httpsUrl(v: string) {
-  try {
-    const u = new URL(v);
-    return u.protocol === "https:" ? u.toString() : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function createClass(formData: FormData) {
@@ -66,11 +59,9 @@ export async function startClass(formData: FormData) {
 
   const id = text(formData, "class_id");
   const back = `/classes/${id}`;
-  const url = httpsUrl(text(formData, "meeting_url"));
-  if (!url) redirect(`${back}?error=link`);
 
   const { data: cls } = await supabase
-    .from("classes").select("status, starts_at, ends_at, tutor_id").eq("id", id).single();
+    .from("classes").select("status, starts_at, ends_at, tutor_id").eq("id", id).maybeSingle();
   if (!cls) redirect("/classes");
   if (profile.role !== "admin" && cls.tutor_id !== user.id) redirect(back);
   if (cls.status !== "scheduled") redirect(`${back}?error=state`);
@@ -79,18 +70,41 @@ export async function startClass(formData: FormData) {
   if (now < new Date(cls.starts_at).getTime() - TUTOR_EARLY_START_MINUTES * 60000) redirect(`${back}?error=early`);
   if (now > new Date(cls.ends_at).getTime()) redirect(`${back}?error=late`);
 
-  const { error: e1 } = await supabase.from("live_sessions").upsert(
-    { class_id: id, started_by: user.id, meeting_url: url, started_at: new Date().toISOString(), ended_at: null },
-    { onConflict: "class_id" }
-  );
-  if (e1) redirect(`${back}?error=denied`);
+  // Claim the start atomically: if two people click at once, only one update matches.
+  const { data: claimed } = await supabase
+    .from("classes").update({ status: "live" }).eq("id", id).eq("status", "scheduled").select("id");
+  if (!claimed || claimed.length === 0) redirect(`${back}?error=state`);
 
-  const { error: e2 } = await supabase.from("classes").update({ status: "live" }).eq("id", id);
-  if (e2) redirect(`${back}?error=denied`);
+  const room = roomNameFor(id);
+  let failed = false;
+  try {
+    await ensureRoom(room, Math.floor(new Date(cls.ends_at).getTime() / 1000) + 2 * 3600);
+    const { error } = await supabase.from("live_sessions").upsert(
+      {
+        class_id: id,
+        started_by: user.id,
+        room_name: room,
+        meeting_url: null,
+        started_at: new Date().toISOString(),
+        ended_at: null,
+      },
+      { onConflict: "class_id" }
+    );
+    if (error) throw error;
+  } catch (e) {
+    console.error("startClass failed:", e);
+    failed = true;
+  }
+
+  if (failed) {
+    // Put the class back so the tutor can retry. Nothing pretends to be live.
+    await supabase.from("classes").update({ status: "scheduled" }).eq("id", id).eq("status", "live");
+    redirect(`${back}?error=room`);
+  }
 
   revalidatePath(back);
   revalidatePath("/dashboard");
-  redirect(back);
+  redirect(`${back}/room`);
 }
 
 export async function endClass(formData: FormData) {
@@ -122,11 +136,9 @@ export async function joinClass(formData: FormData) {
   const { supabase, user, profile } = await requireAccess();
   const id = text(formData, "class_id");
 
-  // RLS only returns this row when the class is live, its start time has passed,
-  // and this user is allowed to see the class.
-  const { data: session } = await supabase
-    .from("live_sessions").select("meeting_url").eq("class_id", id).maybeSingle();
-  if (!session) redirect("/dashboard?notice=not-open");
+  // The database decides: class is live, start time has passed, and this person has access.
+  const { data: allowed } = await supabase.rpc("can_join_class", { cid: id });
+  if (allowed !== true) redirect("/dashboard?notice=not-open");
 
   if (profile.role === "student") {
     await supabase.from("attendance").upsert(
@@ -134,5 +146,5 @@ export async function joinClass(formData: FormData) {
       { onConflict: "class_id,student_id", ignoreDuplicates: true }
     );
   }
-  redirect(session.meeting_url);
+  redirect(`/classes/${id}/room`);
 }
