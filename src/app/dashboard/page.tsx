@@ -70,6 +70,7 @@ export default async function DashboardPage({
           {isAdmin && <Link href="/admin/enrollments" className={link}>Enrollments</Link>}
           {isAdmin && <Link href="/admin/people" className={link}>People</Link>}
           {isAdmin && <Link href="/admin/cohorts" className={link}>Cohorts</Link>}
+          {isAdmin && <Link href="/admin/recordings" className={link}>Recordings</Link>}
           {isAdmin && <Link href="/admin/curriculum" className={link}>Curriculum</Link>}
           {isAdmin && <Link href="/admin/courses" className={link}>Manage courses</Link>}
           {isStaff && <Link href="/classes/new" className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:bg-gray-800">Schedule class</Link>}

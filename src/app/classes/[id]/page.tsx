@@ -10,6 +10,7 @@ import LocalTime from "@/components/LocalTime";
 import StatusBadge from "@/components/StatusBadge";
 import AutoRefresh from "@/components/AutoRefresh";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
+import RecordingsPanel from "@/components/RecordingsPanel";
 
 const errors: Record<string, string> = {
   room: "We couldn't open the classroom. Please try again in a moment.",
@@ -64,6 +65,7 @@ export default async function ClassPage({
         <div className="mx-auto max-w-xl space-y-4">
           <Link href="/classes" className="text-sm underline">Back to classes</Link>
           <LessonCard cls={c} tutorName={tutorName} serverNow={now} isStaff={false} heading="Lesson" />
+          <RecordingsPanel supabase={supabase} classId={c.id} classStatus={c.status} endsAt={c.ends_at} now={now} canManage={false} isAdmin={false} />
           {course && (
             <p className="text-sm text-gray-600">
               Part of <Link href={`/courses/${course.slug}`} className="underline">{course.title}</Link>
@@ -133,6 +135,8 @@ export default async function ClassPage({
         </div>
 
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{errors[error] ?? "Something went wrong."}</p>}
+
+        <RecordingsPanel supabase={supabase} classId={c.id} classStatus={c.status} endsAt={c.ends_at} now={now} canManage={canManage} isAdmin={profile.role === "admin"} />
 
         {canManage && c.status === "scheduled" && (
           <section className="space-y-3 rounded-xl bg-white p-5 shadow">

@@ -87,3 +87,31 @@ export async function createToken(opts: {
   const json = (await res.json()) as { token: string };
   return json.token;
 }
+
+export type DailyRecording = {
+  id: string;
+  room_name?: string;
+  start_ts: number;
+  status: "finished" | "in-progress" | "canceled";
+  duration?: number;
+};
+
+export async function listRoomRecordings(room: string): Promise<DailyRecording[]> {
+  const res = await fetch(`${API}/recordings?room_name=${encodeURIComponent(room)}`, {
+    headers: headers(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Daily recordings error ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as { data?: DailyRecording[] };
+  return json.data ?? [];
+}
+
+export async function recordingAccessLink(id: string) {
+  const res = await fetch(`${API}/recordings/${encodeURIComponent(id)}/access-link`, {
+    headers: headers(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Daily access-link error ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as { download_link: string };
+  return json.download_link;
+}

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { TUTOR_EARLY_START_MINUTES } from "@/lib/classes";
 import { ensureRoom, roomNameFor } from "@/lib/daily";
+import { syncClassRecordings } from "@/lib/recordings";
 
 function text(fd: FormData, key: string) {
   return String(fd.get(key) ?? "").trim();
@@ -114,6 +115,7 @@ export async function endClass(formData: FormData) {
 
   await supabase.from("live_sessions").update({ ended_at: new Date().toISOString() }).eq("class_id", id);
   await supabase.from("classes").update({ status: "completed" }).eq("id", id).eq("status", "live");
+  await syncClassRecordings(supabase, id);
 
   revalidatePath(`/classes/${id}`);
   revalidatePath("/dashboard");
