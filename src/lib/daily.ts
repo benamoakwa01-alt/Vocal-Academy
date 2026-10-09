@@ -20,6 +20,16 @@ export function roomUrl(name: string) {
 }
 
 // Creates a private room. Recording is OFF at room level; only the tutor's token turns it on.
+function roomProps(expUnix: number) {
+  return {
+    exp: expUnix,
+    max_participants: 30,
+    enable_chat: true,
+    enable_emoji_reactions: true,
+    enable_hand_raising: true,
+  };
+}
+
 export async function ensureRoom(name: string, expUnix: number) {
   const res = await fetch(`${API}/rooms`, {
     method: "POST",
@@ -28,12 +38,22 @@ export async function ensureRoom(name: string, expUnix: number) {
     body: JSON.stringify({
       name,
       privacy: "private",
-      properties: { exp: expUnix, max_participants: 30 },
+      properties: roomProps(expUnix),
     }),
   });
   if (res.ok) return;
   const body = await res.text();
-  if (res.status === 400 && /already exists/i.test(body)) return;
+  if (res.status === 400 && /already exists/i.test(body)) {
+    // Room already exists: refresh its settings so newer features apply. Not fatal if it fails.
+    const upd = await fetch(`${API}/rooms/${name}`, {
+      method: "POST",
+      headers: headers(),
+      cache: "no-store",
+      body: JSON.stringify({ privacy: "private", properties: roomProps(expUnix) }),
+    });
+    if (!upd.ok) console.warn("Daily room update failed:", upd.status, await upd.text());
+    return;
+  }
   throw new Error(`Daily room error ${res.status}: ${body}`);
 }
 

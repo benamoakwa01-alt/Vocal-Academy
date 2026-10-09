@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
-import { CLASS_COLUMNS, type ClassRow } from "@/lib/classes";
+import { CLASS_COLUMNS, getNow, type ClassRow } from "@/lib/classes";
 import { autoRecord, createToken, roomUrl } from "@/lib/daily";
 import { endClass } from "../../actions";
+import RejoinButton from "@/components/RejoinButton";
 
 export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +25,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
     .from("live_sessions").select("room_name").eq("class_id", id).maybeSingle();
   if (!session?.room_name) redirect(`/classes/${id}?error=room`);
 
-  const nowS = Math.floor(Date.now() / 1000);
+  const nowS = Math.floor(getNow() / 1000);
   const endS = Math.floor(new Date(c.ends_at).getTime() / 1000);
   const startS = Math.floor(new Date(c.starts_at).getTime() / 1000);
 
@@ -49,7 +50,10 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
   return (
     <main className="flex h-dvh flex-col bg-gray-900 text-white">
       <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-        <Link href={`/classes/${id}`} className="underline">Leave</Link>
+        <div className="flex items-center gap-3">
+          <Link href={`/classes/${id}`} className="underline">Leave</Link>
+          <RejoinButton />
+        </div>
         <span className="truncate font-medium">{c.title}</span>
         {isStaff ? (
           <form action={endClass}>
