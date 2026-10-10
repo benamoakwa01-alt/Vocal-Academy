@@ -34,6 +34,7 @@ export default function LoginPage() {
         <input required type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black" />
         {error && <p className="text-sm text-red-600">{error}</p>}
+        <Link href="/forgot-password" className="block text-right text-sm underline">Forgot password?</Link>
         <button disabled={loading} className="w-full rounded-lg bg-black p-2.5 text-white hover:bg-gray-800 disabled:opacity-50">
           {loading ? "Logging in..." : "Log in"}
         </button>

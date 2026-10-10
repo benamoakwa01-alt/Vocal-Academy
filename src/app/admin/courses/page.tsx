@@ -28,7 +28,7 @@ export default async function AdminCoursesPage({
           {(courses ?? []).map((c: { id: string; title: string; slug: string; published: boolean }) => (
             <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3">
               <div>
-                <p className="font-medium">{c.title}</p>
+                <Link href={`/admin/courses/${c.id}`} className="font-medium underline">{c.title}</Link>
                 <p className="text-xs text-gray-500">{c.published ? "Published" : "Draft (hidden from catalog)"}</p>
               </div>
               <form action={setPublished}>

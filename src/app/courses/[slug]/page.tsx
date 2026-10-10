@@ -88,7 +88,7 @@ export default async function CoursePage({
                 <input type="hidden" name="course_id" value={course.id} />
                 <input type="hidden" name="slug" value={course.slug} />
                 <p className="mb-3 text-sm text-gray-600">
-                  Request enrollment, then complete payment with the academy. Your access is switched on once payment is confirmed.
+                  Request enrollment, then complete payment with the academy. Your access is switched on once payment is confirmed. Lessons are recorded, and recordings are shared with the students in your class.
                 </p>
                 <button className="rounded-lg bg-black px-5 py-2.5 text-white hover:bg-gray-800">Request enrollment</button>
               </form>

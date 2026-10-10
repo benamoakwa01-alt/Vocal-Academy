@@ -5,6 +5,7 @@ import { CLASS_COLUMNS, getNow, type ClassRow } from "@/lib/classes";
 import { autoRecord, createToken, roomUrl } from "@/lib/daily";
 import { endClass } from "../../actions";
 import RejoinButton from "@/components/RejoinButton";
+import ConfirmEndButton from "@/components/ConfirmEndButton";
 
 export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -58,7 +59,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         {isStaff ? (
           <form action={endClass}>
             <input type="hidden" name="class_id" value={id} />
-            <button className="rounded-lg bg-red-600 px-3 py-1.5 font-medium hover:bg-red-700">End lesson</button>
+            <ConfirmEndButton />
           </form>
         ) : (
           <span className="w-10" />

@@ -20,7 +20,10 @@ export default function SignupPage() {
     const { data, error } = await createClient().auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName, recording_consent: true },
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+      },
     });
     if (error) {
       setError(error.message);
@@ -44,6 +47,10 @@ export default function SignupPage() {
         <input required type="password" minLength={6} placeholder="Password (min 6 characters)" value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black" />
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input type="checkbox" required className="mt-1" />
+          <span>I understand that lessons are recorded, and that other students may appear in recordings shared with my class.</span>
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {message && <p className="text-sm text-green-700">{message}</p>}
         <button disabled={loading} className="w-full rounded-lg bg-black p-2.5 text-white hover:bg-gray-800 disabled:opacity-50">
