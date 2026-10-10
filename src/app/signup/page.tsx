@@ -31,7 +31,7 @@ export default function SignupPage() {
       router.push("/dashboard");
       router.refresh();
     } else {
-      setMessage("Account created. Check your email to confirm, then log in.");
+      setMessage("Check your email. If this address is new, we have sent a confirmation link. If you already have an account, log in or use Forgot password.");
     }
     setLoading(false);
   }
