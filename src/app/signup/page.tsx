@@ -26,12 +26,14 @@ export default function SignupPage() {
       },
     });
     if (error) {
-      setError(error.message);
+      setError(/already registered/i.test(error.message) ? "This email is already registered. Please log in, or use Forgot password if you can't remember your password." : error.message);
+    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setError("This email is already registered. Please log in, or use Forgot password if you can't remember your password.");
     } else if (data.session) {
       router.push("/dashboard");
       router.refresh();
     } else {
-      setMessage("Check your email. If this address is new, we have sent a confirmation link. If you already have an account, log in or use Forgot password.");
+      setMessage("Check your email for a confirmation link, then log in. If it does not arrive, check your spam folder.");
     }
     setLoading(false);
   }
