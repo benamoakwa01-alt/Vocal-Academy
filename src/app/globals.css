@@ -24,3 +24,48 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ---- Pneuma brand ---- */
+@theme { --color-black: #0b1423; }
+
+body > main.min-h-screen { min-height: calc(100dvh - 3.25rem); }
+
+.logo-feather {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent),
+    linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent),
+    linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+  mask-composite: intersect;
+}
+
+@keyframes logo-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes logo-sweep { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes flame-glow {
+  0%, 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(0.9); }
+  35% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.08); }
+  65% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.97); }
+}
+
+.logo-in { animation: logo-in 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.logo-sweep {
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 236, 190, 0.6) 50%, transparent 62%);
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  animation: logo-sweep 2.4s ease-in-out 1.4s 1 both;
+}
+.flame-glow {
+  position: absolute; left: 50%; top: 12.4%; width: 16%; aspect-ratio: 1; border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 205, 110, 0.9) 0%, rgba(255, 170, 60, 0.35) 40%, transparent 70%);
+  mix-blend-mode: screen; pointer-events: none; opacity: 0.45; transform: translate(-50%, -50%);
+  animation: flame-glow 3.2s ease-in-out infinite;
+}
+.rise-in { animation: rise-in 0.9s ease-out 2.2s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-in, .flame-glow, .rise-in { animation: none; }
+  .logo-sweep { display: none; }
+}

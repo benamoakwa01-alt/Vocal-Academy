@@ -65,6 +65,7 @@ export default async function DashboardPage({
         <div className="flex flex-wrap gap-2">
           <Link href="/classes" className={link}>{isStaff ? "Classes" : "My classes"}</Link>
           <Link href="/lessons" className={link}>Lessons</Link>
+          <Link href="/assignments" className={link}>Assignments</Link>
           <Link href="/courses" className={link}>Explore courses</Link>
           {isAdmin && <Link href="/admin" className={link}>Approve students</Link>}
           {isAdmin && <Link href="/admin/enrollments" className={link}>Enrollments</Link>}
