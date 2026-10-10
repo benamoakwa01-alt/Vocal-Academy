@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAccess } from "@/lib/access";
 import { signedAudioUrl, submissionStatus } from "@/lib/assignments";
 import AssignmentStatus from "@/components/AssignmentStatus";
+import AttachmentList from "@/components/AttachmentList";
 import ConfirmButton from "@/components/ConfirmButton";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import LocalTime from "@/components/LocalTime";
@@ -90,6 +91,7 @@ export default async function AssignmentPage({
         <div className="mx-auto max-w-3xl space-y-6">
           {header}
           {reviewed && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Feedback saved.</p>}
+          <AttachmentList supabase={supabase} assignmentId={a.id} canManage={canDelete} />
 
           <section className="space-y-2">
             <h2 className="text-lg font-semibold">Submissions ({subs.length})</h2>
@@ -156,6 +158,7 @@ export default async function AssignmentPage({
         {header}
         <AssignmentStatus status={status} />
         {done && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Saved. Your tutor will review it.</p>}
+        <AttachmentList supabase={supabase} assignmentId={a.id} canManage={false} />
 
         {fb && (
           <section className="space-y-3 rounded-xl bg-white p-5 shadow">

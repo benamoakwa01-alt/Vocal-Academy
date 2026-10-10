@@ -19,7 +19,9 @@ export async function createAssignment(formData: FormData) {
     if (!s || s.course_id !== course_id) redirect("/assignments/new?error=day");
   }
 
+  const newId = crypto.randomUUID();
   const { error } = await supabase.from("assignments").insert({
+    id: newId,
     course_id,
     course_session_id: sessionId,
     title,
@@ -29,13 +31,18 @@ export async function createAssignment(formData: FormData) {
   if (error) redirect("/assignments/new?error=denied");
 
   revalidatePath("/assignments");
-  redirect("/assignments");
+  redirect(`/assignments/${newId}`);
 }
 
 export async function deleteAssignment(formData: FormData) {
   const { supabase, profile } = await requireAccess();
   if (profile.role === "student") redirect("/assignments");
-  await supabase.from("assignments").delete().eq("id", get(formData, "id"));
+  const id = get(formData, "id");
+  const { data: files } = await supabase.from("assignment_files").select("path").eq("assignment_id", id);
+  const { data: gone } = await supabase.from("assignments").delete().eq("id", id).select("id");
+  if (gone && gone.length > 0 && files && files.length > 0) {
+    await supabase.storage.from("assignment-files").remove(files.map((f) => f.path));
+  }
   revalidatePath("/assignments");
   redirect("/assignments");
 }
