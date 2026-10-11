@@ -12,9 +12,14 @@ export async function updateCourse(formData: FormData) {
   const title = get("title");
   if (!title) redirect(`/admin/courses/${id}?error=title`);
 
+  const priceRaw = get("price");
+  const price = priceRaw === "" ? null : Number(priceRaw);
+  if (price !== null && (!isFinite(price) || price < 0)) redirect(`/admin/courses/${id}?error=price`);
+
   const { error } = await supabase.from("courses").update({
     title,
     summary: get("summary") || null,
+    price_ghs: price,
     description: get("description") || null,
     duration: get("duration") || null,
     format: get("format") || null,

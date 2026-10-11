@@ -1,32 +1,38 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { tutorNames } from "@/lib/people";
+import { money } from "@/lib/pricing";
 
 const badge: Record<string, { label: string; cls: string }> = {
   active: { label: "Enrolled", cls: "bg-green-100 text-green-800" },
   completed: { label: "Completed", cls: "bg-gray-100 text-gray-700" },
-  pending: { label: "Request pending", cls: "bg-amber-100 text-amber-800" },
+  pending: { label: "Awaiting payment", cls: "bg-amber-100 text-amber-800" },
   paused: { label: "Paused", cls: "bg-amber-100 text-amber-800" },
   expired: { label: "Expired", cls: "bg-gray-100 text-gray-700" },
   withdrawn: { label: "Withdrawn", cls: "bg-gray-100 text-gray-700" },
 };
 
+type C = {
+  id: string; slug: string; title: string; summary: string | null; duration: string | null;
+  format: string | null; instructor_id: string | null; price_ghs: number | null;
+};
+
 export default async function CoursesPage() {
   const { supabase, user } = await requireUser();
 
-  const { data: courses } = await supabase
+  const { data } = await supabase
     .from("courses")
-    .select("id, slug, title, summary, duration, format, instructor_id")
+    .select("id, slug, title, summary, duration, format, instructor_id, price_ghs")
     .eq("published", true)
     .order("created_at", { ascending: true });
+  const courses = (data ?? []) as C[];
 
   const { data: enrollments } = await supabase
     .from("enrollments").select("course_id, status").eq("student_id", user.id);
-
   const statusByCourse = new Map<string, string>(
     (enrollments ?? []).map((e: { course_id: string; status: string }) => [e.course_id, e.status])
   );
-  const names = await tutorNames(supabase, (courses ?? []).map((c: { instructor_id: string | null }) => c.instructor_id));
+  const names = await tutorNames(supabase, courses.map((c) => c.instructor_id));
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
@@ -36,13 +42,10 @@ export default async function CoursesPage() {
           <Link href="/dashboard" className="text-sm underline">Dashboard</Link>
         </div>
 
-        {(courses ?? []).length === 0 && <p className="text-sm text-gray-500">No courses available yet.</p>}
+        {courses.length === 0 && <p className="text-sm text-gray-500">No courses available yet.</p>}
 
         <ul className="grid gap-4 sm:grid-cols-2">
-          {(courses ?? []).map((c: {
-            id: string; slug: string; title: string; summary: string | null;
-            duration: string | null; format: string | null; instructor_id: string | null;
-          }) => {
+          {courses.map((c) => {
             const b = badge[statusByCourse.get(c.id) ?? ""];
             return (
               <li key={c.id}>
@@ -57,9 +60,14 @@ export default async function CoursesPage() {
                     </div>
                     {c.summary && <p className="text-sm text-gray-600">{c.summary}</p>}
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {[c.instructor_id ? names[c.instructor_id] : null, c.duration, c.format].filter(Boolean).join(" · ")}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="font-semibold">
+                      {c.price_ghs === null ? "Price coming soon" : c.price_ghs === 0 ? "Free" : money(c.price_ghs)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {[c.instructor_id ? names[c.instructor_id] : null, c.duration, c.format].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
                 </Link>
               </li>
             );

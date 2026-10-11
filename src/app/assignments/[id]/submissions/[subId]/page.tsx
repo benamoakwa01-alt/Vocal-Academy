@@ -4,6 +4,8 @@ import { requireAccess } from "@/lib/access";
 import { signedAudioUrl, submissionStatus } from "@/lib/assignments";
 import AssignmentStatus from "@/components/AssignmentStatus";
 import FeedbackForm from "@/components/FeedbackForm";
+import SubmissionFilesView from "@/components/SubmissionFilesView";
+import { loadSubmissionFiles } from "@/lib/submission-files";
 import LocalTime from "@/components/LocalTime";
 
 const errors: Record<string, string> = {
@@ -36,6 +38,7 @@ export default async function ReviewPage({
 
   const audioUrl = await signedAudioUrl(supabase, sub.audio_path);
   const fbUrl = await signedAudioUrl(supabase, fb?.audio_path ?? null);
+  const files = await loadSubmissionFiles(supabase, subId);
   const status = submissionStatus(sub, fb);
 
   return (
@@ -55,7 +58,8 @@ export default async function ReviewPage({
           <h2 className="font-semibold">Submission</h2>
           {sub.text_body && <p className="whitespace-pre-line text-gray-700">{sub.text_body}</p>}
           {audioUrl && <audio controls src={audioUrl} className="w-full" />}
-          {!sub.text_body && !audioUrl && <p className="text-sm text-gray-500">This submission is empty.</p>}
+          <SubmissionFilesView files={files} />
+          {!sub.text_body && !audioUrl && files.length === 0 && <p className="text-sm text-gray-500">This submission is empty.</p>}
         </section>
 
         <FeedbackForm

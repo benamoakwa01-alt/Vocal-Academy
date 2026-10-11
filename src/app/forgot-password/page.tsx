@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError(null);
     const { error } = await createClient().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=/reset-password`,
     });
     if (error) setError(error.message);
     else setSent(true);

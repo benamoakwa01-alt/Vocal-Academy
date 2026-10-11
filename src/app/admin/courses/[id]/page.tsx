@@ -30,7 +30,7 @@ export default async function EditCoursePage({
         <h1 className="text-2xl font-bold">Edit course</h1>
         {saved && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Saved.</p>}
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          {error === "title" ? "Please enter a title." : "Could not save. Please try again."}
+          {error === "title" ? "Please enter a title." : error === "price" ? "Enter the price as a number, for example 100." : "Could not save. Please try again."}
         </p>}
 
         <form action={updateCourse} className="space-y-3 rounded-xl bg-white p-5 shadow">
@@ -52,10 +52,13 @@ export default async function EditCoursePage({
               <input name="format" defaultValue={course.format ?? ""} className={`${input} mt-1`} />
             </label>
           </div>
+          <label className="block text-sm">Price in GHS (leave empty until you are ready to open enrollment; 0 = free)
+            <input name="price" type="number" step="0.01" min="0" defaultValue={course.price_ghs ?? ""} className={`${input} mt-1 sm:w-48`} />
+          </label>
           <label className="block text-sm">What students will learn (one per line)
             <textarea name="outcomes" rows={5} defaultValue={(course.outcomes ?? []).join("\n")} className={`${input} mt-1`} />
           </label>
-          <label className="block text-sm">Curriculum overview (one module per line)
+          <label className="block text-sm">Curriculum (one line each: Duration, Schedule and Session Length lines, then Module and Lesson lines. Optional: a Summary line directly under a Module line)
             <textarea name="curriculum" rows={5} defaultValue={(course.curriculum ?? []).join("\n")} className={`${input} mt-1`} />
           </label>
           <label className="block text-sm">Instructor

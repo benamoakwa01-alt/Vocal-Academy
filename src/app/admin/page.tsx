@@ -32,7 +32,7 @@ function StudentRow({ s, approve }: { s: Student; approve: boolean }) {
               : "rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100"
           }
         >
-          {approve ? "Approve" : "Revoke"}
+          {approve ? "Restore" : "Suspend"}
         </button>
       </form>
     </li>
@@ -63,21 +63,21 @@ export default async function AdminPage() {
     <main className="min-h-screen bg-gray-50 p-6 text-gray-900">
       <div className="mx-auto max-w-3xl space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Student approvals</h1>
+          <h1 className="text-2xl font-bold">Student accounts</h1>
           <Link href="/dashboard" className="text-sm underline">Back to dashboard</Link>
         </div>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Pending ({pending.length})</h2>
-          {pending.length === 0 && <p className="text-sm text-gray-500">No students waiting.</p>}
+          <h2 className="text-lg font-semibold">On hold ({pending.length})</h2>
+          {pending.length === 0 && <p className="text-sm text-gray-500">No accounts on hold.</p>}
           <ul className="space-y-2">
             {pending.map((s) => <StudentRow key={s.id} s={s} approve={true} />)}
           </ul>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Approved ({approved.length})</h2>
-          {approved.length === 0 && <p className="text-sm text-gray-500">No approved students yet.</p>}
+          <h2 className="text-lg font-semibold">Active ({approved.length})</h2>
+          {approved.length === 0 && <p className="text-sm text-gray-500">No active students yet.</p>}
           <ul className="space-y-2">
             {approved.map((s) => <StudentRow key={s.id} s={s} approve={false} />)}
           </ul>

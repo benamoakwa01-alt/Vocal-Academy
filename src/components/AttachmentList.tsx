@@ -62,6 +62,9 @@ export default async function AttachmentList({
               </div>
             </div>
             {urls[i] && f.mime_type?.startsWith("audio/") && <audio controls src={urls[i]!} className="w-full" />}
+            {urls[i] && f.mime_type?.startsWith("video/") && (
+              <video controls playsInline preload="metadata" src={urls[i]!} className="w-full rounded-lg bg-black" />
+            )}
           </li>
         ))}
       </ul>

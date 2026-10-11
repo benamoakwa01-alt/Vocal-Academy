@@ -7,6 +7,8 @@ import ConfirmButton from "@/components/ConfirmButton";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import LocalTime from "@/components/LocalTime";
 import SubmissionForm from "@/components/SubmissionForm";
+import SubmissionFilesView from "@/components/SubmissionFilesView";
+import { loadSubmissionFiles } from "@/lib/submission-files";
 import { deleteAssignment } from "../actions";
 
 type Asg = {
@@ -151,6 +153,7 @@ export default async function AssignmentPage({
   const { data: canSubmit } = await supabase.rpc("can_submit", { aid: id });
   const audioUrl = await signedAudioUrl(supabase, sub?.audio_path ?? null);
   const fbUrl = await signedAudioUrl(supabase, fb?.audio_path ?? null);
+  const files = sub ? await loadSubmissionFiles(supabase, sub.id) : [];
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
@@ -182,6 +185,7 @@ export default async function AssignmentPage({
             initialAudioUrl={audioUrl}
             error={error ? errors[error] ?? "Something went wrong." : null}
             isResubmit={!!sub}
+            initialFiles={files}
           />
         ) : (
           <section className="space-y-3 rounded-xl bg-white p-5 shadow">
@@ -189,6 +193,7 @@ export default async function AssignmentPage({
             {!sub && <p className="text-sm text-gray-600">Submissions are closed because your enrollment is not active.</p>}
             {sub?.text_body && <p className="whitespace-pre-line text-gray-700">{sub.text_body}</p>}
             {audioUrl && <audio controls src={audioUrl} className="w-full" />}
+            <SubmissionFilesView files={files} />
             {sub && <p className="text-xs text-gray-500">Submitted <LocalTime iso={sub.updated_at} /></p>}
           </section>
         )}

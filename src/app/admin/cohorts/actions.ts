@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/session";
+import { notifyUser } from "@/lib/notify";
 
 const get = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
@@ -108,6 +109,14 @@ export async function addStudentToCohort(formData: FormData) {
       course_id, student_id, cohort_id, status: "active", starts_at: new Date().toISOString(),
     });
   }
+  const { data: coh } = await supabase.from("cohorts").select("name, courses(title)").eq("id", cohort_id).maybeSingle();
+  const cohInfo = coh as unknown as { name: string; courses: { title: string } | null } | null;
+  await notifyUser(supabase, student_id, {
+    title: `You have been added to ${cohInfo?.name ?? "your cohort"}`,
+    body: `Your schedule for ${cohInfo?.courses?.title ?? "your course"} is ready. Open your dashboard to see your next class.`,
+    path: "/dashboard",
+    buttonLabel: "See my schedule",
+  });
   revalidatePath(`/admin/cohorts/${cohort_id}`);
   redirect(`/admin/cohorts/${cohort_id}`);
 }

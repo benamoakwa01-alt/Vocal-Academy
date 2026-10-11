@@ -22,7 +22,7 @@ export default function SignupPage() {
       password,
       options: {
         data: { full_name: fullName, recording_consent: true },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=/dashboard`,
       },
     });
     if (error) {

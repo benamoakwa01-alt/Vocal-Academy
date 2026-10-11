@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { addAttachment } from "@/app/assignments/attachment-actions";
 
-const MAX_BYTES = 25 * 1024 * 1024;
-const ACCEPT = "audio/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt";
+const MAX_BYTES = 50 * 1024 * 1024;
+const ACCEPT = "audio/*,video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt";
 
 export default function AttachmentUploader({ assignmentId }: { assignmentId: string }) {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function AttachmentUploader({ assignmentId }: { assignmentId: str
     const problems: string[] = [];
     for (const file of files) {
       if (file.size > MAX_BYTES) {
-        problems.push(`${file.name} is larger than 25 MB.`);
+        problems.push(`${file.name} is larger than 50 MB.`);
         continue;
       }
       const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, "_");
@@ -59,7 +59,7 @@ export default function AttachmentUploader({ assignmentId }: { assignmentId: str
         {busy ? "Uploading..." : "Add files"}
         <input type="file" multiple accept={ACCEPT} onChange={onChange} disabled={busy} className="hidden" />
       </label>
-      <p className="text-xs text-gray-500">Audio, PDF, Word, PowerPoint, Excel, text or images. Up to 25 MB each.</p>
+      <p className="text-xs text-gray-500">Audio, video, PDF, Word, PowerPoint, Excel, text or images. Up to 50 MB each.</p>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
