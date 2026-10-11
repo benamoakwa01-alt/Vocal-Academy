@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { tutorNames } from "@/lib/people";
 import { money } from "@/lib/pricing";
+import EqBars from "@/components/EqBars";
+import StaveDivider from "@/components/StaveDivider";
 
 const badge: Record<string, { label: string; cls: string }> = {
   active: { label: "Enrolled", cls: "bg-green-100 text-green-800" },
@@ -36,43 +38,68 @@ export default async function CoursesPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Explore Courses</h1>
-          <Link href="/dashboard" className="text-sm underline">Dashboard</Link>
+      <div className="mx-auto max-w-3xl space-y-8">
+        <div className="space-y-2">
+          <div className="flex items-end justify-between gap-3">
+            <h1 className="text-3xl font-bold text-[#0b1423]">Explore Courses</h1>
+            <Link href="/dashboard" className="text-sm underline">Dashboard</Link>
+          </div>
+          <StaveDivider tone="dark" className="max-w-sm opacity-80" />
         </div>
 
-        {courses.length === 0 && <p className="text-sm text-gray-500">No courses available yet.</p>}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-2xl font-semibold text-[#0b1423]">Vocals</h2>
+            <EqBars className="h-4 text-[#bfa26b]" />
+          </div>
 
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {courses.map((c) => {
-            const b = badge[statusByCourse.get(c.id) ?? ""];
-            return (
-              <li key={c.id}>
-                <Link href={`/courses/${c.slug}`}
-                  className="flex h-full flex-col justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 hover:bg-gray-50">
-                  <div className="space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h2 className="font-semibold">{c.title}</h2>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${b ? b.cls : "bg-blue-100 text-blue-800"}`}>
-                        {b ? b.label : "Explore"}
-                      </span>
+          {courses.length === 0 && <p className="text-sm text-gray-500">No courses available yet.</p>}
+
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {courses.map((c) => {
+              const b = badge[statusByCourse.get(c.id) ?? ""];
+              return (
+                <li key={c.id}>
+                  <Link href={`/courses/${c.slug}`}
+                    className="flex h-full flex-col justify-between gap-3 rounded-xl border border-gray-200 border-t-[3px] border-t-[#bfa26b] bg-white p-4 shadow-sm hover:shadow-md">
+                    <div className="space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-display text-xl font-semibold leading-snug text-[#0b1423]">{c.title}</h3>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${b ? b.cls : "bg-blue-100 text-blue-800"}`}>
+                          {b ? b.label : "Explore"}
+                        </span>
+                      </div>
+                      {c.summary && <p className="text-sm text-gray-600">{c.summary}</p>}
                     </div>
-                    {c.summary && <p className="text-sm text-gray-600">{c.summary}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-semibold">
-                      {c.price_ghs === null ? "Price coming soon" : c.price_ghs === 0 ? "Free" : money(c.price_ghs)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {[c.instructor_id ? names[c.instructor_id] : null, c.duration, c.format].filter(Boolean).join(" · ")}
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="space-y-1">
+                      <p className="font-semibold">
+                        {c.price_ghs === null ? "Price coming soon" : c.price_ghs === 0 ? "Free" : money(c.price_ghs)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {[c.instructor_id ? names[c.instructor_id] : null, c.duration, c.format].filter(Boolean).join(" \u00b7 ")}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-2xl font-semibold text-[#0b1423]">Instruments</h2>
+          <div className="rounded-xl border border-dashed border-[#bfa26b] bg-white/60 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">Instrument lessons</p>
+                <p className="text-sm text-gray-600">We are starting with vocals. Instrument programmes are coming soon.</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#0b1423] px-3 py-1 text-xs font-medium text-[#ead39e]">
+                Coming soon
+              </span>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

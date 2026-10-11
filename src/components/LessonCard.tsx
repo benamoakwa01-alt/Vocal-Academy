@@ -7,6 +7,7 @@ import {
   TUTOR_EARLY_START_MINUTES, formatCountdown, getLessonState, type ClassRow,
 } from "@/lib/classes";
 import LocalTime from "./LocalTime";
+import EqBars from "./EqBars";
 
 type Props = {
   cls: ClassRow;
@@ -76,7 +77,7 @@ export default function LessonCard({ cls, tutorName, serverNow, isStaff, heading
       {cls.description && <p className="mt-2 text-sm text-gray-700">{cls.description}</p>}
 
       <p className={`mt-4 text-lg font-semibold ${state === "live" ? "text-green-700" : ""}`}>
-        {state === "live" && <span className="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-600" />}
+        {state === "live" && <EqBars className="mr-2 h-4 text-green-600" />}
         {headline}
       </p>
       {sub && <p className="text-sm text-gray-600">{sub}</p>}
