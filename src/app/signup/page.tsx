@@ -3,6 +3,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import AuthShell from "@/components/auth/AuthShell";
+import { Alert, Field, PasswordField, SubmitButton } from "@/components/auth/fields";
+
+const ALREADY = "This email is already registered. Please log in, or use Forgot password if you cannot remember your password.";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,8 +19,10 @@ export default function SignupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError(null);
+    setMessage(null);
     const { data, error } = await createClient().auth.signUp({
       email,
       password,
@@ -26,12 +32,13 @@ export default function SignupPage() {
       },
     });
     if (error) {
-      setError(/already registered/i.test(error.message) ? "This email is already registered. Please log in, or use Forgot password if you can't remember your password." : error.message);
+      setError(/already registered/i.test(error.message) ? ALREADY : error.message);
     } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-      setError("This email is already registered. Please log in, or use Forgot password if you can't remember your password.");
+      setError(ALREADY);
     } else if (data.session) {
       router.push("/dashboard");
       router.refresh();
+      return;
     } else {
       setMessage("Check your email for a confirmation link, then log in. If it does not arrive, check your spam folder.");
     }
@@ -39,29 +46,24 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6 text-gray-900">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-xl bg-white p-6 shadow">
-        <h1 className="text-2xl font-bold">Create your account</h1>
-        <input required placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black" />
-        <input required type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black" />
-        <input required type="password" minLength={6} placeholder="Password (min 6 characters)" value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black" />
-        <label className="flex items-start gap-2 text-sm text-gray-700">
+    <AuthShell
+      title="Create your account"
+      subtitle="Join the academy and start learning."
+      footer={<>Already have an account? <Link href="/login" className="font-medium text-[#101B2D] underline">Log in</Link></>}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Full name" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <PasswordField label="Password" autoComplete="new-password" required minLength={6}
+          hint="At least 6 characters." value={password} onChange={(e) => setPassword(e.target.value)} />
+        <label className="flex items-start gap-2 text-sm text-[#17253B]">
           <input type="checkbox" required className="mt-1" />
           <span>I understand that lessons are recorded, and that other students may appear in recordings shared with my class.</span>
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {message && <p className="text-sm text-green-700">{message}</p>}
-        <button disabled={loading} className="w-full rounded-lg bg-black p-2.5 text-white hover:bg-gray-800 disabled:opacity-50">
-          {loading ? "Creating..." : "Sign up"}
-        </button>
-        <p className="text-center text-sm text-gray-600">
-          Already have an account? <Link href="/login" className="underline">Log in</Link>
-        </p>
+        {error && <Alert kind="error">{error}</Alert>}
+        {message && <Alert kind="success">{message}</Alert>}
+        <SubmitButton loading={loading} loadingText="Creating your account...">Create account</SubmitButton>
       </form>
-    </main>
+    </AuthShell>
   );
 }

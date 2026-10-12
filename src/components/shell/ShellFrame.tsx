@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import NotificationBell from "@/components/NotificationBell";
 import { createClient } from "@/lib/supabase/client";
 import { Icon } from "./icons";
+import ConfirmGuard from "@/components/ConfirmGuard";
 import { isActive, titleFor, type NavGroup } from "./nav";
 
 type ShellUser = { name: string; email: string; role: string };
@@ -214,6 +215,7 @@ export default function ShellFrame({
 
   return (
     <div className="flex min-h-dvh bg-[#F4F5F7] text-[#17253B]">
+      <ConfirmGuard />
       <a href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[#101B2D] focus:shadow-lg">
         Skip to content

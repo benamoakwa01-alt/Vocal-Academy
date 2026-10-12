@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
@@ -14,6 +15,8 @@ const errors: Record<string, string> = {
   price: "Enrollment is not open for this course yet.",
   failed: "We could not send your request. Please try again.",
 };
+
+const panel = "rounded-xl border border-gray-200 bg-white p-5 shadow-sm";
 
 export default async function CoursePage({
   params, searchParams,
@@ -56,128 +59,154 @@ export default async function CoursePage({
   const curriculum: string[] = course.curriculum ?? [];
 
   const priceNode = !quote?.priced ? (
-    <span className="text-gray-600">Price coming soon</span>
+    <span className="text-[#647084]">Price coming soon</span>
   ) : quote.list === 0 ? (
-    <span className="font-semibold">Free</span>
+    <span className="text-2xl font-bold text-[#101B2D]">Free</span>
   ) : quote.discount > 0 ? (
     <span>
-      <s className="mr-2 text-gray-500">{money(quote.list)}</s>
-      <span className="text-xl font-bold">{money(quote.due)}</span>
+      <s className="mr-2 text-[#647084]">{money(quote.list)}</s>
+      <span className="text-2xl font-bold text-[#101B2D]">{money(quote.due)}</span>
     </span>
   ) : (
-    <span className="text-xl font-bold">{money(quote.list)}</span>
+    <span className="text-2xl font-bold text-[#101B2D]">{money(quote.list)}</span>
   );
 
+  const chips = [instructor ? `Instructor: ${instructor}` : null, course.format ? `Format: ${course.format}` : null]
+    .filter(Boolean) as string[];
+
   return (
-    <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <Link href="/courses" className="text-sm underline">All courses</Link>
+    <main className="pb-10">
+      <section className="relative isolate overflow-hidden bg-[#101B2D] pb-14 pt-8 text-white">
+        <Image src="/images/vocal-training-hero.jpg" alt="" fill sizes="100vw" className="-z-20 object-cover object-[80%_center]" />
+        <div aria-hidden="true" className="absolute inset-0 -z-10"
+          style={{ background: "linear-gradient(90deg, rgba(16,27,45,0.96) 0%, rgba(16,27,45,0.88) 45%, rgba(16,27,45,0.55) 100%)" }} />
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <Link href="/courses" className="text-sm text-[#D8BC7E] underline">All courses</Link>
+          <h1 className="mt-3 text-3xl font-bold text-white sm:text-4xl">{course.title}</h1>
+          {course.summary && <p className="mt-3 max-w-2xl text-[#C9D1DF]">{course.summary}</p>}
+          {chips.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {chips.map((c) => (
+                <li key={c} className="rounded-full border border-[#D8BC7E]/40 px-3 py-1 text-sm text-[#D8BC7E]">{c}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
 
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold">{course.title}</h1>
-          {course.summary && <p className="text-gray-600">{course.summary}</p>}
-          <p className="text-sm text-gray-500">
-            {[instructor ? `Instructor: ${instructor}` : null,
-              
-              course.format ? `Format: ${course.format}` : null].filter(Boolean).join(" · ")}
-          </p>
-        </header>
-
-        {course.description && <p className="whitespace-pre-line text-gray-700">{course.description}</p>}
-
+      <div className="mx-auto -mt-8 max-w-6xl space-y-6 px-4 sm:px-6">
         <CourseSummary lines={curriculum} fallbackDuration={course.duration ?? null} />
 
-        {outcomes.length > 0 && (
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold">What you will learn</h2>
-            <ul className="list-disc space-y-1 pl-5 text-gray-700">
-              {outcomes.map((o) => <li key={o}>{o}</li>)}
-            </ul>
-          </section>
-        )}
+        {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{errors[error] ?? errors.failed}</p>}
 
-        {curriculum.length > 0 && (
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold">Curriculum overview</h2>
-            <CurriculumView lines={curriculum} />
-          </section>
-        )}
-
-        {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{errors[error] ?? errors.failed}</p>}
-
-        {!hasAccess && status === "pending" && (
-          <section className="space-y-3 rounded-xl bg-amber-50 p-5">
-            <p className="font-semibold text-amber-900">Your enrollment is waiting for payment confirmation</p>
-            <p className="text-sm text-amber-900">
-              Complete your payment, then tell us you have paid. Your access starts as soon as the academy confirms it.
-            </p>
-            <Link href={`/courses/${course.slug}/enroll`}
-              className="inline-block rounded-lg bg-black px-4 py-2 text-sm text-white hover:bg-gray-800">
-              See payment details
-            </Link>
-          </section>
-        )}
-
-        {!hasAccess && status === "paused" && (
-          <p className="rounded-xl bg-gray-100 p-4 text-sm text-gray-700">
-            Your enrollment is paused. Please contact the academy.
-          </p>
-        )}
-
-        {canRequest && (
-          <section className="space-y-4 rounded-xl bg-white p-5 shadow">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold">Enroll in this course</h2>
-              {priceNode}
-            </div>
-
-            {quote?.valid && quote.discount > 0 && (
-              <p className="text-sm text-green-700">
-                {quote.label ? `${quote.label}: ` : ""}you save {money(quote.discount)}.
-              </p>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="order-2 space-y-8 lg:order-1 lg:col-span-2">
+            {course.description && (
+              <section className="space-y-2">
+                <h2 className="font-display text-2xl font-semibold">About this course</h2>
+                <p className="whitespace-pre-line text-[#17253B]">{course.description}</p>
+              </section>
             )}
 
-            {quote?.priced && (
-              <form method="get" className="flex gap-2">
-                <input name="code" defaultValue={cleanCode} placeholder="Promo code (optional)"
-                  className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2.5 text-black" />
-                <button className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm hover:bg-gray-100">Apply</button>
-              </form>
-            )}
-            {cleanCode && quote && !quote.valid && (
-              <p className="text-sm text-red-600">That promo code is not valid or has expired.</p>
-            )}
-
-            {quote?.priced ? (
-              <form action={requestEnrollment}>
-                <input type="hidden" name="course_id" value={course.id} />
-                <input type="hidden" name="slug" value={course.slug} />
-                <input type="hidden" name="code" value={quote.valid ? cleanCode : ""} />
-                <button className="w-full rounded-lg bg-black px-5 py-3 font-semibold text-white hover:bg-gray-800 sm:w-auto">
-                  {quote.due === 0 ? "Enroll for free" : `Enroll for ${money(quote.due)}`}
-                </button>
-              </form>
-            ) : (
-              <p className="text-sm text-gray-600">Enrollment opens once the price is set.</p>
+            {outcomes.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="font-display text-2xl font-semibold">What you will learn</h2>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {outcomes.map((o) => (
+                    <li key={o} className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-3 text-sm text-[#17253B]">
+                      <svg viewBox="0 0 20 20" className="mt-0.5 h-5 w-5 shrink-0 text-[#8a6d2f]" fill="none" stroke="currentColor"
+                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M4 10.5l4 4 8-9" />
+                      </svg>
+                      <span>{o}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
 
-            <p className="text-xs text-gray-500">
-              After you enroll you will see the payment details. Classes, lessons, recordings and assignments unlock once the academy confirms your payment. Lessons are recorded, and recordings are shared with the students in your class.
-            </p>
-          </section>
-        )}
+            {curriculum.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="font-display text-2xl font-semibold">Curriculum</h2>
+                <CurriculumView lines={curriculum} />
+              </section>
+            )}
+          </div>
 
-        {hasAccess && (
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {status === "completed" ? "Completed" : isStaffHere ? "Course classes" : "You are enrolled"}
-              </h2>
-              {isStaffHere && <Link href="/classes/new" className="text-sm underline">Schedule a class</Link>}
-            </div>
-            <ClassList classes={classes} names={classNames} now={now} empty="No classes scheduled yet." />
-          </section>
-        )}
+          <aside className="order-1 space-y-4 lg:order-2 lg:sticky lg:top-24 lg:self-start">
+            {canRequest && (
+              <section className={`${panel} space-y-4`}>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold text-[#101B2D]">Enroll</h2>
+                  {priceNode}
+                </div>
+
+                {quote?.valid && quote.discount > 0 && (
+                  <p className="text-sm text-green-700">
+                    {quote.label ? `${quote.label}: ` : ""}you save {money(quote.discount)}.
+                  </p>
+                )}
+
+                {quote?.priced && (
+                  <form method="get" className="flex gap-2">
+                    <input name="code" defaultValue={cleanCode} placeholder="Promo code (optional)" aria-label="Promo code"
+                      className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 text-[#17253B]" />
+                    <button className="inline-flex h-10 items-center rounded-lg border border-gray-300 px-4 text-sm font-medium hover:bg-gray-50">Apply</button>
+                  </form>
+                )}
+                {cleanCode && quote && !quote.valid && (
+                  <p role="alert" className="text-sm text-red-600">That promo code is not valid or has expired.</p>
+                )}
+
+                {quote?.priced ? (
+                  <form action={requestEnrollment}>
+                    <input type="hidden" name="course_id" value={course.id} />
+                    <input type="hidden" name="slug" value={course.slug} />
+                    <input type="hidden" name="code" value={quote.valid ? cleanCode : ""} />
+                    <button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-[#101B2D] font-semibold text-white hover:bg-[#14223A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#101B2D] focus-visible:ring-offset-2">
+                      {quote.due === 0 ? "Enroll for free" : `Enroll for ${money(quote.due)}`}
+                    </button>
+                  </form>
+                ) : (
+                  <p className="text-sm text-[#647084]">Enrollment opens once the price is set.</p>
+                )}
+
+                <p className="text-xs text-[#647084]">
+                  After you enroll you will see the payment details. Classes, lessons, recordings and assignments unlock once the academy confirms your payment. Lessons are recorded, and recordings are shared with the students in your class.
+                </p>
+              </section>
+            )}
+
+            {!hasAccess && status === "pending" && (
+              <section className={`${panel} space-y-3 border-[#D8BC7E]`}>
+                <p className="font-semibold text-[#101B2D]">Waiting for payment confirmation</p>
+                <p className="text-sm text-[#647084]">
+                  Complete your payment, then tell us you have paid. Your access starts as soon as the academy confirms it.
+                </p>
+                <Link href={`/courses/${course.slug}/enroll`}
+                  className="inline-flex h-10 items-center rounded-lg bg-[#101B2D] px-4 text-sm font-semibold text-white hover:bg-[#14223A]">
+                  See payment details
+                </Link>
+              </section>
+            )}
+
+            {!hasAccess && status === "paused" && (
+              <p className={`${panel} text-sm text-[#647084]`}>Your enrollment is paused. Please contact the academy.</p>
+            )}
+
+            {hasAccess && (
+              <section className={`${panel} space-y-3`}>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold text-[#101B2D]">
+                    {status === "completed" ? "Completed" : isStaffHere ? "Course classes" : "You are enrolled"}
+                  </h2>
+                  {isStaffHere && <Link href="/classes/new" className="text-sm font-medium text-[#101B2D] underline">Schedule a class</Link>}
+                </div>
+                <ClassList classes={classes} names={classNames} now={now} empty="No classes scheduled yet." />
+              </section>
+            )}
+          </aside>
+        </div>
       </div>
     </main>
   );

@@ -9,6 +9,7 @@ export default function ConfirmButton({
 }) {
   return (
     <button
+      data-has-confirm="true"
       onClick={(e) => {
         if (!window.confirm(message)) e.preventDefault();
       }}
