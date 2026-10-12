@@ -113,3 +113,23 @@ h1 {
   .eq-bar { animation: none; transform: scaleY(0.6); }
   .playhead { display: none; }
 }
+
+/* ---- Pneuma workspace design tokens ---- */
+:root {
+  --navy-900: #101B2D;
+  --navy-800: #14223A;
+  --gold-300: #D8BC7E;
+  --surface: #F4F5F7;
+  --ink: #17253B;
+  --ink-muted: #647084;
+}
+@theme {
+  --color-black: #101B2D;
+  --color-gray-50: #F4F5F7;
+  --color-gray-100: #ECEEF2;
+  --color-gray-200: #E2E5EB;
+}
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #101B2D;
+  outline-offset: 2px;
+}
