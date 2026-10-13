@@ -31,7 +31,7 @@ export default async function CohortPage({
   const { data: tutors } = await supabase.from("tutor_names").select("id, full_name").order("full_name");
 
   const { data: enrollData } = await supabase
-    .from("enrollments").select("id, status, profiles(full_name, email)").eq("cohort_id", id);
+    .from("enrollments").select("id, status, profiles!student_id(full_name, email)").eq("cohort_id", id);
   const members = (enrollData ?? []) as unknown as {
     id: string; status: string; profiles: { full_name: string | null; email: string | null } | null;
   }[];

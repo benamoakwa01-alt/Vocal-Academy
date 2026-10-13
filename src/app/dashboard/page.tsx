@@ -276,14 +276,14 @@ export default async function DashboardPage({
         </div>
 
         <div className="space-y-6">
-          <Panel title="My courses" action={<Link href="/courses" className="text-sm font-medium text-[#101B2D] underline">Explore</Link>}>
+          <Panel title="My courses" action={<Link href="/my-courses" className="text-sm font-medium text-[#101B2D] underline">See all</Link>}>
             {enrollments.length === 0 ? (
               <p className="text-sm text-[#647084]">You are not enrolled in a course yet.</p>
             ) : (
               <ul className="space-y-2">
                 {enrollments.map((e) => (
                   <li key={e.courses!.slug}>
-                    <Link href={e.status === "pending" ? `/courses/${e.courses!.slug}/enroll` : `/courses/${e.courses!.slug}`}
+                    <Link href={e.status === "pending" ? `/courses/${e.courses!.slug}/enroll` : `/my-courses/${e.courses!.slug}`}
                       className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 text-sm hover:bg-gray-50">
                       <span className="font-medium text-[#17253B]">{e.courses!.title}</span>
                       <span className={`shrink-0 text-xs ${e.status === "pending" ? "font-medium text-[#8a6d2f]" : "text-[#647084]"}`}>

@@ -81,7 +81,7 @@ export default async function AssignmentPage({
     const nameOf = new Map(((pData ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? "Unnamed"]));
 
     const { data: eData } = await supabase
-      .from("enrollments").select("student_id, profiles(full_name)").eq("course_id", a.course_id).eq("status", "active");
+      .from("enrollments").select("student_id, profiles!student_id(full_name)").eq("course_id", a.course_id).eq("status", "active");
     const submitted = new Set(subs.map((s) => s.student_id));
     const missing = ((eData ?? []) as unknown as { student_id: string; profiles: { full_name: string | null } | null }[])
       .filter((e) => !submitted.has(e.student_id));

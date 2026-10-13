@@ -11,6 +11,7 @@ import StatusBadge from "@/components/StatusBadge";
 import AutoRefresh from "@/components/AutoRefresh";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import RecordingsPanel from "@/components/RecordingsPanel";
+import Classmates from "@/components/Classmates";
 
 const errors: Record<string, string> = {
   room: "We couldn't open the classroom. Please try again in a moment.",
@@ -66,6 +67,7 @@ export default async function ClassPage({
           <Link href="/classes" className="text-sm underline">Back to classes</Link>
           <LessonCard cls={c} tutorName={tutorName} serverNow={now} isStaff={false} heading="Lesson" />
           <RecordingsPanel supabase={supabase} classId={c.id} classStatus={c.status} endsAt={c.ends_at} now={now} canManage={false} isAdmin={false} />
+          {c.course_id && <Classmates supabase={supabase} courseId={c.course_id} />}
           {course && (
             <p className="text-sm text-gray-600">
               Part of <Link href={`/courses/${course.slug}`} className="underline">{course.title}</Link>
