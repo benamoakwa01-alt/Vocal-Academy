@@ -37,6 +37,7 @@ export function navFor(role: string): NavGroup[] {
       {
         label: "Students and payments",
         items: [
+          { href: "/admin/students", label: "Students", icon: "user" },
           { href: "/admin/enrollments", label: "Enrollments", icon: "user-check" },
           { href: "/admin/promos", label: "Promos", icon: "tag" },
           { href: "/admin/settings", label: "Payment details", icon: "card" },
@@ -45,7 +46,7 @@ export function navFor(role: string): NavGroup[] {
       {
         label: "People",
         items: [
-          { href: "/admin/people", label: "People and tutors", icon: "user" },
+          { href: "/admin/people", label: "People and tutors", icon: "shield" },
           { href: "/admin", label: "Accounts", icon: "shield", exact: true },
         ],
       },
@@ -71,6 +72,7 @@ export function navFor(role: string): NavGroup[] {
       label: "Learn",
       items: [
         dashboard,
+        { href: "/my-courses", label: "My courses", icon: "layers" },
         { href: "/classes", label: "My classes", icon: "video" },
         { href: "/lessons", label: "Lessons", icon: "book" },
         { href: "/assignments", label: "Assignments", icon: "clipboard" },
@@ -102,6 +104,10 @@ const TITLES: [RegExp, string][] = [
   [/^\/courses\/[^/]+/, "Course"],
   [/^\/courses/, "Explore courses"],
   [/^\/notifications/, "Notifications"],
+  [/^\/my-courses\/[^/]+/, "My course"],
+  [/^\/my-courses/, "My courses"],
+  [/^\/admin\/students\/[^/]+/, "Student"],
+  [/^\/admin\/students/, "Students"],
   [/^\/admin\/enrollments/, "Enrollments"],
   [/^\/admin\/cohorts\/[^/]+/, "Cohort"],
   [/^\/admin\/cohorts/, "Cohorts"],
