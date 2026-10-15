@@ -15,15 +15,27 @@ export async function refreshRecordings(formData: FormData) {
   redirect(`/classes/${id}`);
 }
 
-// Only an admin can approve a flagged recording, so a tutor can't wave through a short one.
-export async function approveRecording(formData: FormData) {
+async function changeStatus(formData: FormData, from: string, to: string) {
   const { supabase, profile } = await requireAccess();
-  if (profile.role !== "admin") redirect("/dashboard");
+  if (profile.role === "student") redirect("/dashboard");
   const id = text(formData, "id");
   const classId = text(formData, "class_id");
-  await supabase.from("recordings").update({ status: "ready", updated_at: new Date().toISOString() })
-    .eq("id", id).eq("status", "review");
+  // The database only lets the class tutor or an admin make this change.
+  await supabase.from("recordings")
+    .update({ status: to, updated_at: new Date().toISOString() })
+    .eq("id", id).eq("status", from);
   revalidatePath(`/classes/${classId}`);
   revalidatePath("/admin/recordings");
+  revalidatePath("/my-courses");
   redirect(`/classes/${classId}`);
+}
+
+// Publish to students
+export async function approveRecording(formData: FormData) {
+  return changeStatus(formData, "review", "ready");
+}
+
+// Take it back off the students' pages
+export async function hideRecording(formData: FormData) {
+  return changeStatus(formData, "ready", "review");
 }
