@@ -159,3 +159,10 @@ h1 {
   body { background: #fff !important; }
   #main-content { padding: 0 !important; }
 }
+
+/* Printing a grade report: hide the navigation, keep the report */
+@media print {
+  aside, header, nav, .no-print { display: none !important; }
+  body { background: #fff !important; }
+  #main-content { padding: 0 !important; }
+}
