@@ -152,3 +152,10 @@ h1 {
   box-shadow: 0 1px 2px rgba(16, 27, 45, 0.06), 0 2px 6px rgba(16, 27, 45, 0.06);
   border: 1px solid #E2E5EB;
 }
+
+/* Printing a grade report: hide the navigation, keep the report */
+@media print {
+  aside, header, nav, .no-print { display: none !important; }
+  body { background: #fff !important; }
+  #main-content { padding: 0 !important; }
+}
