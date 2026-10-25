@@ -16,7 +16,7 @@ type Cls = {
 type Rec = { id: string; class_id: string; status: string; duration_seconds: number | null; expected_seconds: number | null };
 
 const FILTERS = [
-  ["ready", "Ready"], ["review", "Needs review"], ["processing", "Processing"],
+  ["ready", "Published"], ["review", "Needs approval"], ["processing", "Processing"],
   ["failed", "Failed"], ["missing", "No recording found"], ["notended", "Not ended in the app"],
 ];
 const select = "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-[#17253B]";
@@ -35,8 +35,8 @@ function summarise(c: Cls, recs: Rec[], now: number) {
 }
 
 const badge: Record<string, { text: string; cls: string }> = {
-  ready: { text: "Ready", cls: "bg-green-100 text-green-800" },
-  review: { text: "Needs review", cls: "bg-amber-100 text-amber-800" },
+  ready: { text: "Published", cls: "bg-green-100 text-green-800" },
+  review: { text: "Needs approval", cls: "bg-amber-100 text-amber-800" },
   processing: { text: "Processing", cls: "bg-blue-100 text-blue-800" },
   failed: { text: "Failed", cls: "bg-red-100 text-red-700" },
   missing: { text: "No recording found", cls: "bg-red-100 text-red-700" },
@@ -47,7 +47,7 @@ const badge: Record<string, { text: string; cls: string }> = {
 export default async function AdminRecordingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ course?: string; status?: string; checked?: string; failed?: string }>;
+  searchParams: Promise<{ course?: string; status?: string; checked?: string; failed?: string; detail?: string }>;
 }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
@@ -84,9 +84,12 @@ export default async function AdminRecordingsPage({
     .filter((c) => !recs.some((r) => r.class_id === c.id && (r.status === "ready" || r.status === "review")))
     .slice(0, 8);
   let providerFailures = 0;
+  let firstFailure: string | null = null;
   if (needsSync.length) {
     const results = await Promise.all(needsSync.map((c) => syncClassRecordings(supabase, c.id)));
-    providerFailures = results.filter((r) => !r.ok && r.reason === "provider").length;
+    providerFailures = results.filter((r) => !r.ok && r.reason !== "no-room").length;
+    const bad = results.find((r) => !r.ok && r.reason !== "no-room");
+    firstFailure = bad && !bad.ok ? bad.detail : null;
     recs = await loadRecs();
   }
 
@@ -118,12 +121,12 @@ export default async function AdminRecordingsPage({
       {sp.checked !== undefined && (
         <p role="status" className={`rounded-lg p-3 text-sm ${Number(sp.failed) > 0 ? "bg-amber-50 text-amber-800" : "bg-green-50 text-green-800"}`}>
           Checked Daily for {sp.checked} {Number(sp.checked) === 1 ? "class" : "classes"}.
-          {Number(sp.failed) > 0 && ` ${sp.failed} could not be checked. See the note below.`}
+          {Number(sp.failed) > 0 && ` ${sp.failed} could not be checked.${sp.detail ? ` Reason: ${sp.detail}` : ""}`}
         </p>
       )}
       {providerFailures > 0 && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          We could not reach Daily for {providerFailures} {providerFailures === 1 ? "class" : "classes"}. Check that
+          We could not check {providerFailures} {providerFailures === 1 ? "class" : "classes"}{firstFailure ? ` (${firstFailure})` : ""}. Check that
           DAILY_API_KEY and DAILY_DOMAIN are set correctly where the site runs (Vercel, or .env.local on your Codespace), then try again.
         </p>
       )}

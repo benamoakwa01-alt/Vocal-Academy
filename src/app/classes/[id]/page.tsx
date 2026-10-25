@@ -11,6 +11,7 @@ import StatusBadge from "@/components/StatusBadge";
 import AutoRefresh from "@/components/AutoRefresh";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import RecordingsPanel from "@/components/RecordingsPanel";
+import AttendanceRegister from "@/components/AttendanceRegister";
 import Classmates from "@/components/Classmates";
 
 const errors: Record<string, string> = {
@@ -139,6 +140,8 @@ export default async function ClassPage({
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{errors[error] ?? "Something went wrong."}</p>}
 
         <RecordingsPanel supabase={supabase} classId={c.id} classStatus={c.status} endsAt={c.ends_at} now={now} canManage={canManage} isAdmin={profile.role === "admin"} />
+
+        {canManage && <AttendanceRegister supabase={supabase} classId={c.id} courseId={c.course_id} cohortId={c.cohort_id} status={c.status} />}
 
         {canManage && c.status === "scheduled" && (
           <section className="space-y-3 rounded-xl bg-white p-5 shadow">

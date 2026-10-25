@@ -36,7 +36,7 @@ export default async function LessonsPage({
     <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
       <div className="mx-auto max-w-3xl space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Lessons</h1>
+          <h1 className="text-2xl font-bold">Video library</h1>
           <Link href="/dashboard" className="text-sm underline">Back to dashboard</Link>
         </div>
 

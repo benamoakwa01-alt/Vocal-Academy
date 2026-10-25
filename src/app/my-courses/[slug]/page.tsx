@@ -8,6 +8,7 @@ import { enrollmentLabel } from "@/lib/enrollment";
 import LessonCard from "@/components/LessonCard";
 import ClassList from "@/components/ClassList";
 import Classmates from "@/components/Classmates";
+import ProgressPanel from "@/components/ProgressPanel";
 import CourseSummary from "@/components/CourseSummary";
 import CurriculumView from "@/components/CurriculumView";
 import AssignmentStatus from "@/components/AssignmentStatus";
@@ -27,7 +28,7 @@ export default async function MyCoursePage({ params }: { params: Promise<{ slug:
   if (!course) notFound();
 
   const { data: enr } = await supabase
-    .from("enrollments").select("status, cohort_id").eq("course_id", course.id).eq("student_id", user.id).maybeSingle();
+    .from("enrollments").select("id, status, cohort_id").eq("course_id", course.id).eq("student_id", user.id).maybeSingle();
   if (!enr) redirect(`/courses/${slug}`);
   if (enr.status === "pending") redirect(`/courses/${slug}/enroll`);
 
@@ -83,7 +84,7 @@ export default async function MyCoursePage({ params }: { params: Promise<{ slug:
   const curriculum: string[] = course.curriculum ?? [];
   const nav = [
     ["classes", "Classes"], ["recordings", "Recordings"], ["assignments", "Assignments"],
-    ["lessons", "Lessons"], ["classmates", "Cohort"], ["about", "About"],
+    ["lessons", "Video library"], ["classmates", "Cohort"], ["about", "About"],
   ];
 
   return (
@@ -187,9 +188,9 @@ export default async function MyCoursePage({ params }: { params: Promise<{ slug:
             </section>
 
             <section id="lessons" className="scroll-mt-24">
-              <Panel title="Lessons" action={<Link href="/lessons" className="text-sm font-medium text-[#101B2D] underline">All lessons</Link>}>
+              <Panel title="Video library" action={<Link href="/lessons" className="text-sm font-medium text-[#101B2D] underline">Full library</Link>}>
                 {lessons.length === 0 ? (
-                  <p className="text-sm text-[#647084]">No recorded lessons for this course yet.</p>
+                  <p className="text-sm text-[#647084]">No videos for this course yet.</p>
                 ) : (
                   <ul className="space-y-2">
                     {lessons.map((l) => (
@@ -207,6 +208,7 @@ export default async function MyCoursePage({ params }: { params: Promise<{ slug:
           </div>
 
           <div className="space-y-6">
+            <ProgressPanel supabase={supabase} courseId={course.id} slug={slug} enrollmentId={enr.id} studentId={user.id} cohortId={enr.cohort_id} />
             <section id="classmates" className="scroll-mt-24 space-y-6">
               <Panel title="Your cohort">
                 {cohort ? (

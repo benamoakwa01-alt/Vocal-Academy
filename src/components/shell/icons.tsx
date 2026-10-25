@@ -16,6 +16,7 @@ const PATHS: Record<string, ReactNode> = {
   user: (<><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>),
   shield: (<><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></>),
   compass: (<><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></>),
+  award: (<><circle cx="12" cy="9" r="6" /><path d="M8.5 14.5L7 21l5-3 5 3-1.5-6.5" /></>),
   menu: (<path d="M4 6h16M4 12h16M4 18h16" />),
   x: (<path d="M6 6l12 12M18 6L6 18" />),
   "chevron-left": (<path d="M15 6l-6 6 6 6" />),

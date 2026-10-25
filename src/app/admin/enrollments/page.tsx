@@ -5,6 +5,7 @@ import { enrollmentLabel } from "@/lib/enrollment";
 import { money } from "@/lib/pricing";
 import { PageHeader, btnPrimary, btnSecondary } from "@/components/ui";
 import { enrollStudent, setEnrollmentStatus } from "./actions";
+import { assignToCohort } from "./cohort-actions";
 
 type Row = {
   id: string;
@@ -65,7 +66,7 @@ function Who({ e, now }: { e: Row; now: number }) {
 export default async function AdminEnrollmentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; course?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; course?: string; status?: string; assigned?: string; error?: string }>;
 }) {
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().toLowerCase();
@@ -89,6 +90,9 @@ export default async function AdminEnrollmentsPage({
   const { data: students } = await supabase
     .from("profiles").select("id, full_name, email").eq("role", "student").order("full_name").limit(500);
   const { data: courses } = await supabase.from("courses").select("id, title").order("title");
+  const { data: kData } = await supabase.from("cohorts").select("id, name, course_id, status")
+    .neq("status", "cancelled").order("starts_at", { ascending: false });
+  const cohortList = (kData ?? []) as { id: string; name: string; course_id: string; status: string }[];
 
   const pending = rows.filter((r) => r.status === "pending");
   const noCohort = rows.filter((r) => r.status === "active" && !r.cohort_id);
@@ -107,6 +111,9 @@ export default async function AdminEnrollmentsPage({
           Could not load enrollments: {error.message}
         </p>
       )}
+
+      {sp.assigned && <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Student added to the cohort. They have been notified.</p>}
+      {sp.error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error}</p>}
 
       <form method="get" className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-4">
         <label className="block text-sm sm:col-span-2">Search
@@ -168,7 +175,24 @@ export default async function AdminEnrollmentsPage({
           </p>
           <ul className="space-y-2">
             {noCohort.map((e) => (
-              <li key={e.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"><Who e={e} now={now} /></li>
+              <li key={e.id} className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <Who e={e} now={now} />
+                {(() => {
+                  const options = cohortList.filter((k) => k.course_id === e.courses?.id);
+                  return options.length === 0 ? (
+                    <p className="text-sm text-[#647084]">No cohort exists for this course yet. <Link href="/admin/cohorts" className="underline">Create one</Link>.</p>
+                  ) : (
+                    <form action={assignToCohort} className="flex flex-wrap gap-2">
+                      <input type="hidden" name="enrollment_id" value={e.id} />
+                      <select name="cohort_id" required defaultValue="" aria-label="Cohort" className={`${input} sm:max-w-xs`}>
+                        <option value="" disabled>Choose a cohort...</option>
+                        {options.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+                      </select>
+                      <button className={btnPrimary}>Add to cohort</button>
+                    </form>
+                  );
+                })()}
+              </li>
             ))}
           </ul>
         </section>

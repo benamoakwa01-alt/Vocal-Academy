@@ -20,7 +20,7 @@ export default async function LessonPage({
   return (
     <main className="min-h-screen bg-gray-50 p-6 text-gray-900">
       <div className="mx-auto max-w-3xl space-y-4">
-        <Link href="/lessons" className="text-sm underline">Back to lessons</Link>
+        <Link href="/lessons" className="text-sm underline">Back to video library</Link>
         <h1 className="text-2xl font-bold">{lesson.title}</h1>
         {embed ? (
           <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">

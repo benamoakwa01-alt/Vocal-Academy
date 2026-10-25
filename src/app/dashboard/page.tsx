@@ -87,7 +87,7 @@ export default async function DashboardPage({
     if (isAdmin) tasks.push({ label: "Payments waiting for confirmation", n: waiting, href: "/admin/enrollments" });
     if (isAdmin) tasks.push({ label: "Paid students not in a cohort", n: noCohort, href: "/admin/cohorts" });
     tasks.push({ label: "Submissions to review", n: toReview, href: "/assignments" });
-    if (isAdmin) tasks.push({ label: "Recordings to check", n: recordingsToCheck, href: "/admin/recordings" });
+    if (isAdmin) tasks.push({ label: "Recordings waiting for approval", n: recordingsToCheck, href: "/admin/recordings" });
     const open = tasks.filter((t) => t.n > 0);
 
     const actions: { label: string; href: string }[] = [
@@ -102,7 +102,7 @@ export default async function DashboardPage({
         { label: "Add a tutor", href: "/admin/people" },
       );
     } else {
-      actions.push({ label: "Lessons", href: "/lessons" });
+      actions.push({ label: "Video library", href: "/lessons" });
     }
 
     return (
