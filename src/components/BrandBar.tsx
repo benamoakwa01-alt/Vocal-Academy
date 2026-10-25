@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const HIDDEN_ON = [
   "/", "/login", "/signup", "/forgot-password", "/reset-password",
-  "/dashboard", "/admin", "/classes", "/lessons", "/assignments", "/courses", "/my-courses", "/grades", "/notifications",
+  "/dashboard", "/admin", "/classes", "/lessons", "/assignments", "/courses", "/my-courses", "/grades", "/my-grades", "/profile", "/tutors", "/notifications",
 ];
 
 export default function BrandBar() {

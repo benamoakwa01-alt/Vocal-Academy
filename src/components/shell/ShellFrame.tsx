@@ -148,6 +148,7 @@ function AccountMenu({ user }: { user: ShellUser }) {
             <p className="truncate text-xs text-[#647084]">{user.email}</p>
           </div>
           <div className="my-1 border-t border-gray-100" />
+          {user.role !== "student" && <Link role="menuitem" href="/profile" onClick={() => setOpen(false)} className={item}>My profile</Link>}
           <Link role="menuitem" href="/notifications" onClick={() => setOpen(false)} className={item}>Notifications</Link>
           <button role="menuitem" type="button" onClick={signOut} disabled={signingOut} className={`${item} disabled:opacity-60`}>
             {signingOut ? "Signing out..." : "Sign out"}

@@ -49,7 +49,7 @@ export default async function PeoplePage() {
             {tutors.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3">
                 <div>
-                  <p className="font-medium">{t.full_name ?? "Unnamed"}</p>
+                  <p className="font-medium">{t.full_name ?? "Unnamed"} <Link href={`/profile/${t.id}`} className="ml-2 text-sm font-normal underline">Public profile</Link></p>
                   <p className="text-sm text-gray-600">{t.email}</p>
                 </div>
                 <form action={removeTutor}>

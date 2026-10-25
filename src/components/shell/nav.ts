@@ -41,6 +41,7 @@ export function navFor(role: string): NavGroup[] {
           { href: "/admin/students", label: "Students", icon: "user" },
           { href: "/admin/enrollments", label: "Enrollments", icon: "user-check" },
           { href: "/admin/promos", label: "Promos", icon: "tag" },
+          { href: "/admin/waitlist", label: "Waitlist", icon: "list" },
           { href: "/admin/settings", label: "Payment details", icon: "card" },
         ],
       },
@@ -78,6 +79,7 @@ export function navFor(role: string): NavGroup[] {
         { href: "/classes", label: "My classes", icon: "video" },
         { href: "/lessons", label: "Video library", icon: "book" },
         { href: "/assignments", label: "Assignments", icon: "clipboard" },
+        { href: "/my-grades", label: "My grades", icon: "award" },
       ],
     },
     { label: "Courses", items: [{ href: "/courses", label: "Explore courses", icon: "compass" }] },
@@ -92,6 +94,9 @@ export function isActive(item: NavItem, path: string) {
 
 const TITLES: [RegExp, string][] = [
   [/^\/dashboard/, "Dashboard"],
+  [/^\/my-grades/, "My grades"],
+  [/^\/profile/, "My profile"],
+  [/^\/admin\/waitlist/, "Instrument waitlist"],
   [/^\/grades\/settings/, "Grading settings"],
   [/^\/grades\/[^/]+/, "Student record"],
   [/^\/grades/, "Grades"],

@@ -3,6 +3,8 @@ import Link from "next/link";
 import EqBars from "@/components/EqBars";
 import PianoStrip from "@/components/PianoStrip";
 import StaveDivider from "@/components/StaveDivider";
+import TutorsSection from "@/components/TutorsSection";
+import WaitlistSection from "@/components/WaitlistSection";
 
 const vocalCourses = [
   "30:15 Vocal Transformation",
@@ -57,6 +59,7 @@ export default function Home() {
           <nav aria-label="Main" className="flex items-center gap-2 sm:gap-5">
             <a href="#programmes" className="hidden text-sm text-[#C9D1DF] hover:text-white sm:inline">Programmes</a>
             <a href="#how-it-works" className="hidden text-sm text-[#C9D1DF] hover:text-white sm:inline">How it works</a>
+            <Link href="/tutors" className="hidden text-sm text-[#C9D1DF] hover:text-white sm:inline">Tutors</Link>
             <Link href="/login" className="rounded-lg border border-[#D8BC7E]/60 px-3 py-2 text-sm font-medium text-[#D8BC7E] hover:bg-white/5">Log in</Link>
             <Link href="/signup" className={`rounded-lg px-3 py-2 text-sm font-semibold ${gold}`}>Join the Academy</Link>
           </nav>
@@ -156,6 +159,8 @@ export default function Home() {
           </div>
         </section>
 
+        <WaitlistSection />
+
         <section id="how-it-works" className="bg-white py-16">
           <div className="mx-auto max-w-6xl px-4">
             <h2 className="font-display text-3xl font-semibold text-[#101B2D] sm:text-4xl">Simple. Structured. Effective.</h2>
@@ -173,6 +178,8 @@ export default function Home() {
             </ol>
           </div>
         </section>
+
+        <TutorsSection />
 
         <section className="bg-[#101B2D] py-14 text-white">
           <div className="mx-auto grid max-w-5xl items-center gap-8 px-4 md:grid-cols-2">
