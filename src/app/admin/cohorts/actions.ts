@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/session";
 import { notifyUser } from "@/lib/notify";
 import { alertTutorOfNewStudent } from "@/lib/alerts";
+import { tutorOnTeam } from "@/lib/team";
 
 const get = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const here = (id: string, qs: string) => `/admin/cohorts/${id}?${qs}`;
@@ -34,6 +35,8 @@ export async function createCohort(formData: FormData) {
 
   if (!name || !course_id || !starts_on || !session_time || !(minutes > 0)) redirect("/admin/cohorts?error=invalid");
   if (isWeekend(starts_on)) redirect("/admin/cohorts?error=weekend");
+  const mainTutor = get(formData, "tutor_id") || null;
+  if (mainTutor && !(await tutorOnTeam(supabase, course_id, mainTutor))) redirect("/admin/cohorts?error=team");
 
   const id = crypto.randomUUID();
   const { error } = await supabase.from("cohorts").insert({
@@ -58,13 +61,16 @@ export async function updateCohort(formData: FormData) {
   const name = get(formData, "name");
   if (!name || !["planned", "active", "completed", "cancelled"].includes(status)) redirect(here(id, "error=invalid"));
 
-  const { data: before } = await supabase.from("cohorts").select("tutor_id").eq("id", id).maybeSingle();
+  const { data: before } = await supabase.from("cohorts").select("tutor_id, course_id").eq("id", id).maybeSingle();
+  if (tutor_id && before && !(await tutorOnTeam(supabase, before.course_id, tutor_id))) redirect(here(id, "error=team"));
   const { error } = await supabase.from("cohorts").update({ name, tutor_id, status }).eq("id", id);
   if (error) redirect(problem(id, error.message));
 
   // A tutor change moves all classes that have not started yet.
   if (before && before.tutor_id !== tutor_id) {
-    await supabase.from("classes").update({ tutor_id }).eq("cohort_id", id).eq("status", "scheduled");
+    // Only the classes still with the previous main tutor move. Topic tutors and covers stay as they are.
+    const move = supabase.from("classes").update({ tutor_id }).eq("cohort_id", id).eq("status", "scheduled");
+    await (before.tutor_id ? move.eq("tutor_id", before.tutor_id) : move.is("tutor_id", null));
   }
   revalidatePath(`/admin/cohorts/${id}`);
   redirect(here(id, "notice=saved"));
@@ -82,7 +88,7 @@ export async function generateSchedule(formData: FormData) {
   const { supabase } = await requireAdmin();
   const id = get(formData, "id");
   const { data, error } = await supabase.rpc("generate_cohort_schedule", { coh: id });
-  if (error) redirect(here(id, "error=generate"));
+  if (error) redirect(here(id, error.message.includes("teaching team") ? "error=team" : "error=generate"));
   revalidatePath(`/admin/cohorts/${id}`);
   revalidatePath("/dashboard");
   redirect(here(id, `generated=${data ?? 0}`));

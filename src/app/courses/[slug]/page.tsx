@@ -102,7 +102,7 @@ export default async function CoursePage({
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="order-2 space-y-8 lg:order-1 lg:col-span-2">
-            <InstructorCard supabase={supabase} tutorId={course.instructor_id} />
+            <InstructorCard supabase={supabase} tutorId={course.instructor_id} courseId={course.id} />
             {course.description && (
               <section className="space-y-2">
                 <h2 className="font-display text-2xl font-semibold">About this course</h2>

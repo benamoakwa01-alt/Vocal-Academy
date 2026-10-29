@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import ClassForm from "@/components/ClassForm";
+import { myCourseIds, teamsByCourse } from "@/lib/team";
 
 export default async function NewClassPage({
   searchParams,
@@ -14,11 +15,14 @@ export default async function NewClassPage({
   const isAdmin = profile.role === "admin";
 
   const courseQuery = supabase.from("courses").select("id, title").order("title");
-  const { data: courses } = isAdmin ? await courseQuery : await courseQuery.eq("instructor_id", user.id);
+  const mine = isAdmin ? [] : await myCourseIds(supabase, user.id);
+  const { data: courses } = isAdmin ? await courseQuery : mine.length ? await courseQuery.in("id", mine) : { data: [] };
 
   const { data: tutors } = isAdmin
     ? await supabase.from("tutor_names").select("id, full_name").order("full_name")
     : { data: [] };
+
+  const teams = await teamsByCourse(supabase);
 
   // RLS limits tutors to students in their own courses or classes.
   const { data: students } = await supabase
@@ -44,6 +48,7 @@ export default async function NewClassPage({
           students={students ?? []}
           isAdmin={isAdmin}
           selfId={user.id}
+          teams={teams}
           error={error}
         />
       </div>

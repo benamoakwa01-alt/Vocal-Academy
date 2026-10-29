@@ -40,7 +40,7 @@ export async function createClass(formData: FormData) {
     starts_at: start.toISOString(),
     ends_at: end.toISOString(),
   });
-  if (error) redirect("/classes/new?error=denied");
+  if (error) redirect(error.message.includes("teaching team") ? "/classes/new?error=team" : "/classes/new?error=denied");
 
   if (studentIds.length) {
     const { error: e2 } = await supabase
@@ -64,7 +64,8 @@ export async function startClass(formData: FormData) {
   const { data: cls } = await supabase
     .from("classes").select("status, starts_at, ends_at, tutor_id").eq("id", id).maybeSingle();
   if (!cls) redirect("/classes");
-  if (profile.role !== "admin" && cls.tutor_id !== user.id) redirect(back);
+  const { data: mayManage } = await supabase.rpc("can_manage_class", { cid: id });
+  if (mayManage !== true) redirect(back);
   if (cls.status !== "scheduled") redirect(`${back}?error=state`);
 
   const now = Date.now();

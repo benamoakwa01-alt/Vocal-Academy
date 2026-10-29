@@ -19,6 +19,8 @@ export async function removeTutor(formData: FormData) {
   const { data: target } = await supabase.from("profiles").select("role").eq("id", id).maybeSingle();
   if (!target || target.role !== "tutor") return;
   await supabase.from("courses").update({ instructor_id: null }).eq("instructor_id", id);
+  await supabase.from("course_tutors").delete().eq("tutor_id", id);
+  await supabase.from("course_sessions").update({ tutor_id: null }).eq("tutor_id", id);
   // Back to a student who must be re-approved before getting any access.
   await supabase.from("profiles").update({ role: "student", approved: false }).eq("id", id);
   revalidatePath("/admin/people");

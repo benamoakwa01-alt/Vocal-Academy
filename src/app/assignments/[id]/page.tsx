@@ -88,7 +88,8 @@ export default async function AssignmentPage({
     const missing = ((eData ?? []) as unknown as { student_id: string; profiles: { full_name: string | null } | null }[])
       .filter((e) => !submitted.has(e.student_id));
 
-    const canDelete = profile.role === "admin" || a.courses?.instructor_id === user.id;
+    const { data: onTeam } = await supabase.rpc("is_course_instructor", { cid: a.course_id });
+    const canDelete = profile.role === "admin" || a.courses?.instructor_id === user.id || onTeam === true;
 
     return (
       <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">

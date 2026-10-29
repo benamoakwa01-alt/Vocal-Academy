@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAccess } from "@/lib/access";
 import { addLesson, deleteLesson, setLessonCourse } from "./actions";
+import { myCourseIds } from "@/lib/team";
 
 const errors: Record<string, string> = {
   title: "Please enter a title.",
@@ -25,7 +26,8 @@ export default async function LessonsPage({
     .from("courses").select("id, title, instructor_id").order("title");
   const allCourses = (courseData ?? []) as { id: string; title: string; instructor_id: string | null }[];
   const titleById = new Map(allCourses.map((c) => [c.id, c.title]));
-  const assignable = isAdmin ? allCourses : allCourses.filter((c) => c.instructor_id === user.id);
+  const myIds = new Set(isAdmin ? [] : await myCourseIds(supabase, user.id));
+  const assignable = isAdmin ? allCourses : allCourses.filter((c) => myIds.has(c.id));
 
   const { data: lessons } = await supabase
     .from("lessons")

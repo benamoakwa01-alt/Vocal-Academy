@@ -88,6 +88,7 @@ export default async function CohortPage({
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
           {sp.error === "none" ? "Choose at least one student first."
             : sp.error === "generate" ? "Could not generate the schedule."
+            : sp.error === "team" ? "That tutor is not on this course's teaching team. Add them to the team first."
             : sp.error === "add" ? `Could not add the student. ${sp.detail ?? ""}`
             : "Something went wrong. Please try again."}
         </p>
@@ -191,7 +192,7 @@ export default async function CohortPage({
                 </select>
               </label>
               <button className={btnPrimary}>Save</button>
-              <p className="text-xs text-[#647084]">Changing the tutor also moves every class that has not started yet.</p>
+              <p className="text-xs text-[#647084]">Changing the tutor moves the classes that were with the previous main tutor. Topic tutors and covers stay as they are.</p>
             </form>
           </Panel>
 

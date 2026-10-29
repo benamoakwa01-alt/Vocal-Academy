@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAccess } from "@/lib/access";
 import { submissionStatus } from "@/lib/assignments";
+import { myCourseIds } from "@/lib/team";
 import AssignmentStatus from "@/components/AssignmentStatus";
 
 type A = {
@@ -30,7 +31,7 @@ export default async function AssignmentsPage() {
 
   let canCreate = profile.role === "admin";
   if (!canCreate && isStaff) {
-    const { data } = await supabase.from("courses").select("id").eq("instructor_id", user.id).limit(1);
+    const data = await myCourseIds(supabase, user.id);
     canCreate = (data ?? []).length > 0;
   }
 

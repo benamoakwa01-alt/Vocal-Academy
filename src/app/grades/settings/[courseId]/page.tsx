@@ -30,7 +30,8 @@ export default async function GradingSettingsPage({
   const { data: course } = await supabase
     .from("courses").select("id, title, instructor_id").eq("id", courseId).maybeSingle();
   if (!course) notFound();
-  const canEdit = profile.role === "admin" || course.instructor_id === user.id;
+  const { data: onTeam } = await supabase.rpc("is_course_instructor", { cid: courseId });
+  const canEdit = profile.role === "admin" || course.instructor_id === user.id || onTeam === true;
 
   const data = await loadCourseData(supabase, courseId);
   const s = data.scheme;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { createAssignment } from "../actions";
+import { myCourseIds } from "@/lib/team";
 
 const input = "mt-1 w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black";
 const errors: Record<string, string> = {
@@ -20,7 +21,8 @@ export default async function NewAssignmentPage({
   if (profile.role === "student") redirect("/assignments");
 
   const courseQuery = supabase.from("courses").select("id, title").order("title");
-  const { data: courseData } = profile.role === "admin" ? await courseQuery : await courseQuery.eq("instructor_id", user.id);
+  const mine = profile.role === "admin" ? [] : await myCourseIds(supabase, user.id);
+  const { data: courseData } = profile.role === "admin" ? await courseQuery : mine.length ? await courseQuery.in("id", mine) : { data: [] };
   const courses = (courseData ?? []) as { id: string; title: string }[];
 
   const { data: sessionData } = courses.length

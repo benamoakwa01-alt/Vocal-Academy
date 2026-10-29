@@ -12,6 +12,8 @@ import AutoRefresh from "@/components/AutoRefresh";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import RecordingsPanel from "@/components/RecordingsPanel";
 import AttendanceRegister from "@/components/AttendanceRegister";
+import ChangeTutorPanel from "@/components/ChangeTutorPanel";
+import CoverNotice from "@/components/CoverNotice";
 import Classmates from "@/components/Classmates";
 
 const errors: Record<string, string> = {
@@ -21,6 +23,8 @@ const errors: Record<string, string> = {
   state: "This class can't be started in its current state, or someone has already started it.",
   denied: "You don't have permission to do that.",
   students: "The class was created, but some students could not be assigned.",
+  cover: "The tutor could not be changed. Please try again.",
+  team: "That tutor is not on this course's teaching team. Add them to the team first.",
 };
 
 export default async function ClassPage({
@@ -52,7 +56,8 @@ export default async function ClassPage({
   const c = data as ClassRow;
   const now = getNow();
   const isStaff = profile.role !== "student";
-  const canManage = profile.role === "admin" || c.tutor_id === user.id;
+  const { data: mayManage } = isStaff ? await supabase.rpc("can_manage_class", { cid: id }) : { data: false };
+  const canManage = mayManage === true;
   const names = await tutorNames(supabase, [c.tutor_id]);
   const tutorName = c.tutor_id ? names[c.tutor_id] ?? null : null;
 
@@ -67,6 +72,7 @@ export default async function ClassPage({
         <div className="mx-auto max-w-xl space-y-4">
           <Link href="/classes" className="text-sm underline">Back to classes</Link>
           <LessonCard cls={c} tutorName={tutorName} serverNow={now} isStaff={false} heading="Lesson" />
+          <CoverNotice supabase={supabase} classId={c.id} />
           <RecordingsPanel supabase={supabase} classId={c.id} classStatus={c.status} endsAt={c.ends_at} now={now} canManage={false} isAdmin={false} />
           {c.course_id && <Classmates supabase={supabase} courseId={c.course_id} />}
           {course && (
@@ -141,6 +147,8 @@ export default async function ClassPage({
 
         <RecordingsPanel supabase={supabase} classId={c.id} classStatus={c.status} endsAt={c.ends_at} now={now} canManage={canManage} isAdmin={profile.role === "admin"} />
 
+        <CoverNotice supabase={supabase} classId={c.id} showNote />
+        {canManage && c.status === "scheduled" && <ChangeTutorPanel supabase={supabase} classId={c.id} courseId={c.course_id} currentTutorId={c.tutor_id} userId={user.id} isAdmin={profile.role === "admin"} />}
         {canManage && <AttendanceRegister supabase={supabase} classId={c.id} courseId={c.course_id} cohortId={c.cohort_id} status={c.status} />}
 
         {canManage && c.status === "scheduled" && (

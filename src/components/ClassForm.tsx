@@ -6,7 +6,8 @@ const input = "w-full rounded-lg border border-gray-300 bg-white p-2.5 text-blac
 const errors: Record<string, string> = {
   title: "Please enter a title.",
   time: "Please set a valid date, with the end time after the start time.",
-  denied: "You don't have permission to create that class. Tutors can only schedule classes for courses they instruct.",
+  denied: "You don't have permission to create that class. Tutors can only schedule classes for courses they teach.",
+  team: "That tutor is not on this course's teaching team. Add them to the team first, or choose someone else.",
 };
 
 function toIso(date: string, time: string) {
@@ -16,39 +17,48 @@ function toIso(date: string, time: string) {
 }
 
 export default function ClassForm({
-  courses, tutors, students, isAdmin, selfId, error,
+  courses, tutors, students, isAdmin, selfId, teams, error,
 }: {
   courses: { id: string; title: string }[];
   tutors: { id: string; full_name: string | null }[];
   students: { id: string; full_name: string | null; email: string | null }[];
   isAdmin: boolean;
   selfId: string;
+  teams: Record<string, string[]>;
   error?: string;
 }) {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [courseId, setCourseId] = useState("");
+  const [tutorId, setTutorId] = useState(selfId);
+
+  // For a course, only its teaching team can be chosen
+  const team = courseId ? teams[courseId] : undefined;
+  const options = team ? tutors.filter((t) => team.includes(t.id)) : tutors;
+  const chosen = options.some((t) => t.id === tutorId) ? tutorId : options[0]?.id ?? selfId;
 
   return (
     <form action={createClass} className="space-y-4 rounded-xl bg-white p-5 shadow">
       <input name="title" required placeholder="Class title (e.g. Vocal Registers)" className={input} />
       <textarea name="description" rows={2} placeholder="Description (optional)" className={input} />
 
-      {isAdmin && (
-        <label className="block text-sm">Tutor
-          <select name="tutor_id" defaultValue={selfId} className={`${input} mt-1`}>
-            {tutors.map((t) => <option key={t.id} value={t.id}>{t.full_name ?? "Unnamed"}</option>)}
-          </select>
-        </label>
-      )}
-
       <label className="block text-sm">Course (optional)
-        <select name="course_id" defaultValue="" className={`${input} mt-1`}>
+        <select name="course_id" value={courseId} onChange={(e) => setCourseId(e.target.value)} className={`${input} mt-1`}>
           <option value="">No course (individual class)</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
         <span className="text-xs text-gray-500">Everyone actively enrolled in the course sees this class automatically.</span>
       </label>
+
+      {isAdmin && (
+        <label className="block text-sm">Tutor
+          <select name="tutor_id" value={chosen} onChange={(e) => setTutorId(e.target.value)} className={`${input} mt-1`}>
+            {options.map((t) => <option key={t.id} value={t.id}>{t.full_name ?? "Unnamed"}</option>)}
+          </select>
+          {team && <span className="text-xs text-gray-500">Only tutors on this course&apos;s teaching team are listed.</span>}
+        </label>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="block text-sm">Date

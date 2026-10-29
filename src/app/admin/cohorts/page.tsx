@@ -7,6 +7,7 @@ const errors: Record<string, string> = {
   invalid: "Please fill in every field.",
   weekend: "The start date must be a weekday (Monday to Friday).",
   failed: "Couldn't create the cohort.",
+  team: "That tutor is not on this course's teaching team. Add them to the team first.",
 };
 
 export default async function CohortsPage({
