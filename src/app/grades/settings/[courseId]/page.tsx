@@ -63,6 +63,10 @@ export default async function GradingSettingsPage({
           </div>
           <p className="text-xs text-[#647084]">The three must add up to 100. Use 0 for the final assessment if the course has none.</p>
 
+          <label className="block text-sm sm:w-56">Late penalty (points)
+              <input name="late_penalty" type="number" min={0} max={100} step="0.5" defaultValue={s.late_penalty} disabled={!canEdit} className={`${field} mt-1`} />
+              <span className="mt-1 block text-xs text-[#647084]">Taken off the score of work handed in after its due time. Use 0 for no penalty.</span>
+            </label>
           <label className="block text-sm sm:w-56">Pass mark (%)
             <input name="pass_mark" type="number" min={0} max={100} step="0.5" defaultValue={s.pass_mark} disabled={!canEdit} className={`${field} mt-1`} />
           </label>

@@ -3,8 +3,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { notifyUser } from "@/lib/notify";
+import { alertReviewersOfSubmission } from "@/lib/alerts";
+import { parseInputValue } from "@/lib/due";
 
 const get = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+const when = (fd: FormData, k: string) => parseInputValue(String(fd.get(k) ?? "").trim());
 
 type FileInfo = { path: string; filename: string; mime_type: string | null; size_bytes: number | null };
 
@@ -50,6 +53,8 @@ export async function createAssignment(formData: FormData) {
     course_session_id: sessionId,
     title,
     instructions: get(formData, "instructions") || null,
+    due_at: when(formData, "due_at"),
+    closes_at: when(formData, "closes_at"),
     created_by: user.id,
   });
   if (error) redirect("/assignments/new?error=denied");
@@ -129,6 +134,7 @@ export async function submitAssignment(formData: FormData) {
 
   revalidatePath(back);
   revalidatePath("/assignments");
+  await alertReviewersOfSubmission(user.id, assignmentId);
   redirect(`${back}?done=1`);
 }
 

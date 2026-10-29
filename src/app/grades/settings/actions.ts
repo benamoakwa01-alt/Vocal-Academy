@@ -35,7 +35,7 @@ export async function saveScheme(formData: FormData) {
   const { error } = await supabase.from("grading_schemes").upsert(
     {
       course_id: courseId, attendance_weight: a, assignments_weight: s, assessment_weight: f,
-      pass_mark: pass, bands, updated_at: new Date().toISOString(),
+      pass_mark: pass, bands, late_penalty: Math.max(0, Math.min(100, Number(get(formData, "late_penalty")) || 0)), updated_at: new Date().toISOString(),
     },
     { onConflict: "course_id" }
   );

@@ -14,7 +14,7 @@ type Published = {
 };
 
 const stateLabel: Record<string, string> = {
-  graded: "Graded", pending: "Waiting for your tutor", missing: "Not submitted yet", ungraded: "Reviewed",
+  graded: "Graded", pending: "Waiting for your tutor", missing: "Not submitted yet", ungraded: "Reviewed", notdue: "Not due yet",
 };
 const pct = (n: number | null) => (n === null ? "None yet" : `${n.toFixed(1)}%`);
 

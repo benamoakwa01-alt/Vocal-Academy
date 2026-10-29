@@ -66,6 +66,14 @@ export default async function NewAssignmentPage({
             <label className="block text-sm">Title
               <input name="title" required className={input} />
             </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm">Due date and time (optional, Ghana time)
+                <input name="due_at" type="datetime-local" className={input} />
+              </label>
+              <label className="block text-sm">Stop accepting work after (optional)
+                <input name="closes_at" type="datetime-local" className={input} />
+              </label>
+            </div>
             <label className="block text-sm">Instructions
               <textarea name="instructions" rows={6} className={input} />
             </label>

@@ -3,6 +3,8 @@ import { requireAccess } from "@/lib/access";
 import { signedAudioUrl, submissionStatus } from "@/lib/assignments";
 import AssignmentStatus from "@/components/AssignmentStatus";
 import AttachmentList from "@/components/AttachmentList";
+import AssignmentDue from "@/components/AssignmentDue";
+import DueDatePanel from "@/components/DueDatePanel";
 import ConfirmButton from "@/components/ConfirmButton";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import LocalTime from "@/components/LocalTime";
@@ -93,6 +95,8 @@ export default async function AssignmentPage({
         <div className="mx-auto max-w-3xl space-y-6">
           {header}
           {reviewed && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Feedback saved.</p>}
+          <AssignmentDue supabase={supabase} assignmentId={a.id} />
+          {canDelete && <DueDatePanel supabase={supabase} assignmentId={a.id} />}
           <AttachmentList supabase={supabase} assignmentId={a.id} canManage={canDelete} />
 
           <section className="space-y-2">
@@ -150,7 +154,9 @@ export default async function AssignmentPage({
 
   const status = submissionStatus(sub, fb);
   const editable = status !== "reviewed";
-  const { data: canSubmit } = await supabase.rpc("can_submit", { aid: id });
+  const { data: canSubmitNew } = await supabase.rpc("can_submit", { aid: id });
+  const { data: canEditNow } = sub ? await supabase.rpc("can_edit_submission", { subid: sub.id }) : { data: false };
+  const canSubmit = canSubmitNew === true || canEditNow === true;
   const audioUrl = await signedAudioUrl(supabase, sub?.audio_path ?? null);
   const fbUrl = await signedAudioUrl(supabase, fb?.audio_path ?? null);
   const files = sub ? await loadSubmissionFiles(supabase, sub.id) : [];
@@ -160,6 +166,7 @@ export default async function AssignmentPage({
       <div className="mx-auto max-w-2xl space-y-6">
         {header}
         <AssignmentStatus status={status} />
+        <AssignmentDue supabase={supabase} assignmentId={id} />
         {done && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Saved. Your tutor will review it.</p>}
         <AttachmentList supabase={supabase} assignmentId={a.id} canManage={false} />
 
@@ -190,7 +197,7 @@ export default async function AssignmentPage({
         ) : (
           <section className="space-y-3 rounded-xl bg-white p-5 shadow">
             <h2 className="font-semibold">Your submission</h2>
-            {!sub && <p className="text-sm text-gray-600">Submissions are closed because your enrollment is not active.</p>}
+            {!sub && <p className="text-sm text-gray-600">Submissions are closed for this assignment.</p>}
             {sub?.text_body && <p className="whitespace-pre-line text-gray-700">{sub.text_body}</p>}
             {audioUrl && <audio controls src={audioUrl} className="w-full" />}
             <SubmissionFilesView files={files} />

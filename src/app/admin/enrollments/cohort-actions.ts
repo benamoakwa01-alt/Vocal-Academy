@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/session";
 import { notifyUser } from "@/lib/notify";
+import { alertTutorOfNewStudent } from "@/lib/alerts";
 
 const fail = (message: string) => `/admin/enrollments?error=${encodeURIComponent(message)}`;
 
@@ -18,6 +19,7 @@ export async function assignToCohort(formData: FormData) {
 
   const { data: coh } = await supabase.from("cohorts").select("name, courses(title)").eq("id", cohortId).maybeSingle();
   const info = coh as unknown as { name: string; courses: { title: string } | null } | null;
+  await alertTutorOfNewStudent(data[0].student_id, cohortId);
   await notifyUser(supabase, data[0].student_id, {
     title: `You have been added to ${info?.name ?? "your cohort"}`,
     body: `Your schedule for ${info?.courses?.title ?? "your course"} is ready. Open your dashboard to see your next class.`,

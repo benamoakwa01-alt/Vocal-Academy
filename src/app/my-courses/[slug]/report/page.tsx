@@ -11,7 +11,7 @@ type Detail = {
   assignments: { rows: { title: string; weight: number; state: string; score: number | null }[] };
 };
 const workLabel: Record<string, string> = {
-  graded: "Graded", pending: "Not finished", missing: "Not submitted", ungraded: "Reviewed",
+  graded: "Graded", pending: "Not finished", missing: "Not submitted", ungraded: "Reviewed", notdue: "Not due yet",
 };
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 

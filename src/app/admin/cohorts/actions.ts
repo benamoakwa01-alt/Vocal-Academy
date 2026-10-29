@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/session";
 import { notifyUser } from "@/lib/notify";
+import { alertTutorOfNewStudent } from "@/lib/alerts";
 
 const get = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const here = (id: string, qs: string) => `/admin/cohorts/${id}?${qs}`;
@@ -88,6 +89,7 @@ export async function generateSchedule(formData: FormData) {
 }
 
 async function tellAdded(supabase: SupabaseClient, studentId: string, cohortId: string) {
+  await alertTutorOfNewStudent(studentId, cohortId);
   const { data: coh } = await supabase.from("cohorts").select("name, courses(title)").eq("id", cohortId).maybeSingle();
   const info = coh as unknown as { name: string; courses: { title: string } | null } | null;
   await notifyUser(supabase, studentId, {

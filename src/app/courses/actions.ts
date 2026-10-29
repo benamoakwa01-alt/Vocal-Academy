@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
+import { alertEnrollmentRequest, alertPaymentReported } from "@/lib/alerts";
 
 const get = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
@@ -19,6 +20,7 @@ export async function requestEnrollment(formData: FormData) {
   }
 
   const { data: e } = await supabase.from("enrollments").select("status").eq("id", String(eid)).maybeSingle();
+  await alertEnrollmentRequest(String(eid));
   revalidatePath("/courses");
   revalidatePath("/dashboard");
   redirect(e?.status === "pending" ? `/courses/${slug}/enroll` : `/courses/${slug}`);
@@ -33,6 +35,7 @@ export async function reportPayment(formData: FormData) {
   const { error } = await supabase.rpc("report_payment", { eid: get(formData, "enrollment_id"), ref: reference });
   if (error) redirect(`/courses/${slug}/enroll?error=failed`);
   revalidatePath(`/courses/${slug}/enroll`);
+  await alertPaymentReported(get(formData, "enrollment_id"));
   redirect(`/courses/${slug}/enroll?saved=1`);
 }
 

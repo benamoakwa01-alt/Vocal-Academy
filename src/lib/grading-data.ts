@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_SCHEME, type Band, type CourseData, type Scheme, type WorkState } from "@/lib/grading";
 import { submissionStatus } from "@/lib/assignments";
+import { isLate } from "@/lib/due";
 
 function chunk<T>(list: T[], size: number) {
   const out: T[][] = [];
@@ -26,12 +27,13 @@ export function schemeFromRow(row: Record<string, unknown> | null): Scheme {
     assignments_weight: Number(row.assignments_weight),
     assessment_weight: Number(row.assessment_weight),
     pass_mark: Number(row.pass_mark),
+    late_penalty: Number(row.late_penalty ?? 0),
     bands: parseBands(row.bands),
   };
 }
 
 // Reads everything needed to grade one course. Row-level security limits it to what the signed-in person may see.
-export async function loadCourseData(supabase: SupabaseClient, courseId: string): Promise<CourseData> {
+export async function loadCourseData(supabase: SupabaseClient, courseId: string, now: number = Date.now()): Promise<CourseData> {
   const { data: s } = await supabase.from("grading_schemes").select("*").eq("course_id", courseId).maybeSingle();
   const scheme = schemeFromRow(s as Record<string, unknown> | null);
 
@@ -49,15 +51,16 @@ export async function loadCourseData(supabase: SupabaseClient, courseId: string)
   }
 
   const { data: aData } = await supabase
-    .from("assignments").select("id, title, weight, counts_toward_grade")
+    .from("assignments").select("id, title, weight, counts_toward_grade, due_at")
     .eq("course_id", courseId).order("created_at", { ascending: true });
-  const assignments = ((aData ?? []) as { id: string; title: string; weight: number | string; counts_toward_grade: boolean }[])
-    .map((a) => ({ id: a.id, title: a.title, weight: Number(a.weight), counts: a.counts_toward_grade }));
+  const assignments = ((aData ?? []) as { id: string; title: string; weight: number | string; counts_toward_grade: boolean; due_at: string | null }[])
+    .map((a) => ({ id: a.id, title: a.title, weight: Number(a.weight), counts: a.counts_toward_grade, due_at: a.due_at }));
+  const dueOf = new Map(assignments.map((a) => [a.id, a.due_at]));
 
-  const subs: { id: string; assignment_id: string; student_id: string; updated_at: string }[] = [];
+  const subs: { id: string; assignment_id: string; student_id: string; submitted_at: string; updated_at: string }[] = [];
   for (const part of chunk(assignments.map((a) => a.id), 40)) {
     const { data } = await supabase
-      .from("submissions").select("id, assignment_id, student_id, updated_at").in("assignment_id", part);
+      .from("submissions").select("id, assignment_id, student_id, submitted_at, updated_at").in("assignment_id", part);
     subs.push(...((data ?? []) as typeof subs));
   }
   const { data: fData } = await supabase
@@ -81,8 +84,8 @@ export async function loadCourseData(supabase: SupabaseClient, courseId: string)
         state = "ungraded";
       }
     }
-    work[`${sub.assignment_id}:${sub.student_id}`] = { state, score };
+    work[`${sub.assignment_id}:${sub.student_id}`] = { state, score, late: isLate(sub.submitted_at, dueOf.get(sub.assignment_id) ?? null) };
   }
 
-  return { scheme, classes, attendance, assignments, work };
+  return { now, scheme, classes, attendance, assignments, work };
 }

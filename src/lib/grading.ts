@@ -7,6 +7,7 @@ export type Scheme = {
   assignments_weight: number;
   assessment_weight: number;
   pass_mark: number;
+  late_penalty: number; // points taken off the score of work handed in after its due time
   bands: Band[];
 };
 
@@ -23,18 +24,22 @@ export const DEFAULT_SCHEME: Scheme = {
   assignments_weight: 80,
   assessment_weight: 0,
   pass_mark: 50,
+  late_penalty: 0,
   bands: DEFAULT_BANDS,
 };
 
 export type ClassRecord = { id: string; title: string; starts_at: string; status: "present" | "excused" | "absent" };
-export type WorkState = "graded" | "pending" | "missing" | "ungraded";
+export type WorkState = "graded" | "pending" | "missing" | "ungraded" | "notdue";
 export type WorkRecord = {
   id: string;
   title: string;
   weight: number;
   counts: boolean;
-  state: WorkState; // graded = final score given, pending = waiting for review or revision, missing = never submitted, ungraded = reviewed with no score
+  // graded = final score given, pending = waiting for review or revision, missing = due date passed (or none set) and nothing handed in,
+  // ungraded = reviewed with no score, notdue = nothing handed in yet and not due yet
+  state: WorkState;
   score: number | null;
+  late: boolean; // handed in after the due time
 };
 
 export type GradeInput = {
@@ -48,7 +53,7 @@ export type GradeInput = {
 export type PartKey = "attendance" | "assignments" | "assessment";
 export type GradeResult = {
   attendance: { held: number; present: number; excused: number; absent: number; pct: number | null };
-  assignments: { counted: number; graded: number; missing: number; pending: number; pct: number | null };
+  assignments: { counted: number; graded: number; missing: number; pending: number; late: number; upcoming: number; pct: number | null };
   assessment: number | null;
   parts: { key: PartKey; label: string; weight: number; value: number | null }[];
   final: number | null;
@@ -85,11 +90,17 @@ export function computeGrade(input: GradeInput): GradeResult {
   let graded = 0;
   let missing = 0;
   let pending = 0;
+  let late = 0;
+  let upcoming = 0;
   for (const w of counted) {
     if (w.state === "graded" && w.score !== null) {
-      scoreSum += w.score * w.weight;
+      const effective = w.late ? Math.max(0, w.score - scheme.late_penalty) : w.score;
+      scoreSum += effective * w.weight;
       weightSum += w.weight;
       graded += 1;
+      if (w.late) late += 1;
+    } else if (w.state === "notdue") {
+      upcoming += 1; // not handed in yet and not due yet, so it is left out
     } else if (w.state === "pending") {
       pending += 1;
     } else if (w.state === "missing") {
@@ -139,6 +150,15 @@ export function computeGrade(input: GradeInput): GradeResult {
   if (scheme.assignments_weight > 0 && assignmentsPct === null) {
     warnings.push("There is no graded assignment yet, so assignments are left out of the grade.");
   }
+  if (late > 0) {
+    const lost = scheme.late_penalty > 0
+      ? ` and lost ${scheme.late_penalty} ${scheme.late_penalty === 1 ? "point" : "points"} each`
+      : " (no penalty is set)";
+    warnings.push(`${plural(late, "assignment was", "assignments were")} handed in late${lost}.`);
+  }
+  if (upcoming > 0) {
+    warnings.push(`${plural(upcoming, "assignment is", "assignments are")} not due yet and left out of the grade.`);
+  }
   if (missing > 0 && missingAsZero) {
     warnings.push(`${plural(missing, "assignment was", "assignments were")} never submitted and ${missing === 1 ? "counts" : "count"} as zero.`);
   }
@@ -148,7 +168,7 @@ export function computeGrade(input: GradeInput): GradeResult {
 
   return {
     attendance: { held: classes.length, present, excused, absent, pct: attendancePct },
-    assignments: { counted: counted.length, graded, missing, pending, pct: assignmentsPct },
+    assignments: { counted: counted.length, graded, missing, pending, late, upcoming, pct: assignmentsPct },
     assessment,
     parts,
     final,
@@ -164,11 +184,12 @@ export function computeGrade(input: GradeInput): GradeResult {
 // ---- Turning the stored records into the input above ----
 
 export type CourseData = {
+  now: number; // the moment the records were read, used to tell "not due yet" from "missing"
   scheme: Scheme;
   classes: { id: string; title: string; starts_at: string; cohort_id: string | null }[]; // completed classes of the course
   attendance: Record<string, "present" | "excused">; // key: classId:studentId
-  assignments: { id: string; title: string; weight: number; counts: boolean }[];
-  work: Record<string, { state: WorkState; score: number | null }>; // key: assignmentId:studentId
+  assignments: { id: string; title: string; weight: number; counts: boolean; due_at: string | null }[];
+  work: Record<string, { state: WorkState; score: number | null; late: boolean }>; // key: assignmentId:studentId
 };
 
 export function toInput(
@@ -185,7 +206,16 @@ export function toInput(
   }));
   const work: WorkRecord[] = data.assignments.map((a) => {
     const w = data.work[`${a.id}:${who.student_id}`];
-    return { id: a.id, title: a.title, weight: a.weight, counts: a.counts, state: w?.state ?? "missing", score: w?.score ?? null };
+    const notYetDue = !!a.due_at && data.now < Date.parse(a.due_at);
+    return {
+      id: a.id,
+      title: a.title,
+      weight: a.weight,
+      counts: a.counts,
+      state: w?.state ?? (notYetDue ? "notdue" : "missing"),
+      score: w?.score ?? null,
+      late: w?.late ?? false,
+    };
   });
   return { classes, work, assessment: opts.assessment, scheme: data.scheme, missingAsZero: opts.missingAsZero };
 }
@@ -193,12 +223,14 @@ export function toInput(
 // The snapshot saved with a published grade, so the student's report never changes by accident
 export function buildDetail(result: GradeResult, input: GradeInput) {
   return {
-    scheme: { pass_mark: input.scheme.pass_mark, bands: input.scheme.bands },
+    scheme: { pass_mark: input.scheme.pass_mark, late_penalty: input.scheme.late_penalty, bands: input.scheme.bands },
     parts: result.parts,
     attendance: { ...result.attendance, rows: input.classes.map((c) => ({ title: c.title, date: c.starts_at, status: c.status })) },
     assignments: {
       ...result.assignments,
-      rows: input.work.filter((w) => w.counts && w.weight > 0).map((w) => ({ title: w.title, weight: w.weight, state: w.state, score: w.score })),
+      rows: input.work
+        .filter((w) => w.counts && w.weight > 0)
+        .map((w) => ({ title: w.title, weight: w.weight, state: w.state, score: w.score, late: w.late })),
     },
     missing_as_zero: input.missingAsZero,
   };

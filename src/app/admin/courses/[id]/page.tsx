@@ -61,6 +61,10 @@ export default async function EditCoursePage({
           <label className="block text-sm">Curriculum (one line each: Duration, Schedule and Session Length lines, then Module and Lesson lines. Optional: a Summary line directly under a Module line)
             <textarea name="curriculum" rows={5} defaultValue={(course.curriculum ?? []).join("\n")} className={`${input} mt-1`} />
           </label>
+          <label className="block text-sm">Keep recordings for (days after the last class)
+            <input name="retention_days" type="number" min={0} defaultValue={course.recording_retention_days ?? ""} className={`${input} mt-1 sm:w-48`} />
+            <span className="mt-1 block text-xs text-[#647084]">Leave empty to keep recordings forever. Recommended: 30. Removed recordings go to the trash for 14 days first.</span>
+          </label>
           <label className="block text-sm">Instructor
             <select name="instructor_id" defaultValue={course.instructor_id ?? ""} className={`${input} mt-1`}>
               <option value="">No instructor</option>

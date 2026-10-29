@@ -26,6 +26,7 @@ export async function updateCourse(formData: FormData) {
     outcomes: lines(get("outcomes")),
     curriculum: lines(get("curriculum")),
     instructor_id: get("instructor_id") || null,
+    recording_retention_days: get("retention_days") === "" ? null : Math.max(0, parseInt(get("retention_days"), 10) || 0),
     published: formData.get("published") === "on",
   }).eq("id", id);
   if (error) redirect(`/admin/courses/${id}?error=failed`);

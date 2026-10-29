@@ -20,7 +20,7 @@ const errors: Record<string, string> = {
   save: "Could not save the grade.",
 };
 const workLabel: Record<string, string> = {
-  graded: "Graded", pending: "Waiting for review", missing: "Not submitted", ungraded: "Reviewed, no score",
+  graded: "Graded", pending: "Waiting for review", missing: "Not submitted", ungraded: "Reviewed, no score", notdue: "Not due yet",
 };
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 

@@ -115,3 +115,14 @@ export async function recordingAccessLink(id: string) {
   const json = (await res.json()) as { download_link: string };
   return json.download_link;
 }
+
+// Deletes a recording from Daily for good. A recording that is already gone counts as deleted.
+export async function deleteRecording(id: string): Promise<void> {
+  const res = await fetch(`${API}/recordings/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: headers(),
+    cache: "no-store",
+  });
+  if (res.ok || res.status === 404) return;
+  throw new Error(`Daily delete error ${res.status}: ${await res.text()}`);
+}

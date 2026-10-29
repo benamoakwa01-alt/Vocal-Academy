@@ -8,6 +8,7 @@ import LessonCard from "@/components/LessonCard";
 import ClassList from "@/components/ClassList";
 import AssignmentStatus from "@/components/AssignmentStatus";
 import LocalTime from "@/components/LocalTime";
+import DueSoonPanel from "@/components/DueSoonPanel";
 import { EmptyState, PageHeader, Panel, StatCard, btnPrimary, btnSecondary } from "@/components/ui";
 
 type Sub = { id: string; assignment_id: string; updated_at: string };
@@ -244,6 +245,8 @@ export default async function DashboardPage({
               <ClassList classes={others} names={names} now={now} empty="" />
             </Panel>
           )}
+
+          <DueSoonPanel supabase={supabase} studentId={user.id} now={now} />
 
           <Panel title="To do" action={<Link href="/assignments" className="text-sm font-medium text-[#101B2D] underline">All assignments</Link>}>
             {todo.length === 0 ? (
