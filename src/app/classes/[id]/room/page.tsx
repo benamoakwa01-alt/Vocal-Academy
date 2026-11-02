@@ -2,13 +2,21 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { CLASS_COLUMNS, getNow, type ClassRow } from "@/lib/classes";
-import { autoRecord, createToken, roomUrl } from "@/lib/daily";
+import { createToken, recordingMode, roomUrl } from "@/lib/daily";
+import { parseQuality } from "@/lib/recording-quality";
 import { endClass } from "../../actions";
 import RejoinButton from "@/components/RejoinButton";
 import ConfirmEndButton from "@/components/ConfirmEndButton";
+import ClassroomFrame from "@/components/ClassroomFrame";
 
-export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RoomPage({
+  params, searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ basic?: string }>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
   const { supabase, user, profile } = await requireAccess();
   const isStaff = profile.role !== "student";
 
@@ -30,6 +38,11 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
   const endS = Math.floor(new Date(c.ends_at).getTime() / 1000);
   const startS = Math.floor(new Date(c.starts_at).getTime() / 1000);
 
+  // Tutors get our own Start and Stop recording buttons (smaller recordings).
+  // "?basic=1" brings back the classroom's own Record button, as a way out if the new buttons ever fail.
+  const ownControls = isStaff && recordingMode() === "cloud" && sp.basic !== "1";
+  const quality = parseQuality(process.env.DAILY_RECORDING_QUALITY);
+
   let url = "";
   let failed = false;
   try {
@@ -40,6 +53,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
       isOwner: isStaff,
       expUnix: Math.max(endS, nowS) + 3600,
       nbfUnix: isStaff ? undefined : startS,
+      showRecordButton: !ownControls,
     });
     url = `${roomUrl(session.room_name)}?t=${token}`;
   } catch (e) {
@@ -65,17 +79,12 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
           <span className="w-10" />
         )}
       </div>
-      {isStaff && !autoRecord() && (
+      {isStaff && !ownControls && (
         <p className="bg-amber-500 px-3 py-1.5 text-sm text-black">
-          Recording is not automatic yet. Press Record in the toolbar once students have joined, and check it shows as recording.
+          Recording is not automatic. Press Record in the toolbar once students have joined, and check it shows as recording.
         </p>
       )}
-      <iframe
-        src={url}
-        title={c.title}
-        allow="camera; microphone; fullscreen; display-capture; autoplay"
-        className="w-full flex-1 border-0"
-      />
+      <ClassroomFrame url={url} title={c.title} ownControls={ownControls} quality={quality} />
     </main>
   );
 }

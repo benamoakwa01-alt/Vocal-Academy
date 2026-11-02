@@ -50,6 +50,7 @@ export function navFor(role: string): NavGroup[] {
         label: "People",
         items: [
           { href: "/admin/people", label: "People and tutors", icon: "shield" },
+          { href: "/admin/admins", label: "Administrators", icon: "shield" },
           { href: "/admin", label: "Accounts", icon: "shield", exact: true },
         ],
       },
@@ -98,6 +99,7 @@ const TITLES: [RegExp, string][] = [
   [/^\/my-grades/, "My grades"],
   [/^\/profile/, "My profile"],
   [/^\/admin\/waitlist/, "Instrument waitlist"],
+  [/^\/admin\/admins/, "Administrators"],
   [/^\/admin\/maintenance/, "Automatic tasks"],
   [/^\/grades\/settings/, "Grading settings"],
   [/^\/grades\/[^/]+/, "Student record"],

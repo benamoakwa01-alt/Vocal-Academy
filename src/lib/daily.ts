@@ -64,25 +64,44 @@ export async function createToken(opts: {
   isOwner: boolean;
   expUnix: number;
   nbfUnix?: number;
+  showRecordButton?: boolean;
 }) {
-  const properties: Record<string, unknown> = {
-    room_name: opts.room,
-    user_name: opts.userName,
-    user_id: opts.userId,
-    is_owner: opts.isOwner,
-    exp: opts.expUnix,
+  const build = (extras: boolean) => {
+    const properties: Record<string, unknown> = {
+      room_name: opts.room,
+      user_name: opts.userName,
+      user_id: opts.userId,
+      is_owner: opts.isOwner,
+      exp: opts.expUnix,
+    };
+    if (opts.nbfUnix) properties.nbf = opts.nbfUnix;
+    if (opts.isOwner) {
+      const mode = recordingMode();
+      properties.enable_recording = mode;
+      if (extras) {
+        // The classroom's own Record button always records at Daily's full 1080p size. Our Start and Stop
+        // buttons record at a smaller size, so the classroom's button is hidden unless asked for.
+        if (mode === "cloud" && !opts.showRecordButton) properties.enable_recording_ui = false;
+        if (autoRecord() && mode !== "local") properties.start_cloud_recording = true;
+      }
+    }
+    return properties;
   };
-  if (opts.nbfUnix) properties.nbf = opts.nbfUnix;
-  if (opts.isOwner) {
-    properties.enable_recording = "cloud";
-    if (autoRecord()) properties.start_cloud_recording = true;
+  const post = (properties: Record<string, unknown>) =>
+    fetch(`${API}/meeting-tokens`, {
+      method: "POST",
+      headers: headers(),
+      cache: "no-store",
+      body: JSON.stringify({ properties }),
+    });
+
+  let res = await post(build(true));
+  if (!res.ok && opts.isOwner) {
+    // Daily did not accept the recording extras. The class must still be able to start,
+    // so try again without them. The tutor can then use the classroom's own Record button.
+    console.warn(`Daily rejected the recording settings (${res.status}): ${await res.text()}`);
+    res = await post(build(false));
   }
-  const res = await fetch(`${API}/meeting-tokens`, {
-    method: "POST",
-    headers: headers(),
-    cache: "no-store",
-    body: JSON.stringify({ properties }),
-  });
   if (!res.ok) throw new Error(`Daily token error ${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { token: string };
   return json.token;
@@ -125,4 +144,10 @@ export async function deleteRecording(id: string): Promise<void> {
   });
   if (res.ok || res.status === 404) return;
   throw new Error(`Daily delete error ${res.status}: ${await res.text()}`);
+}
+
+// How the tutor's classroom records. "cloud" is Daily's cloud recording. "local" saves a file on the tutor's own computer and costs nothing.
+export function recordingMode(): string {
+  const v = (process.env.DAILY_RECORDING_MODE ?? "cloud").trim();
+  return ["cloud", "cloud-audio-only", "local"].includes(v) ? v : "cloud";
 }
