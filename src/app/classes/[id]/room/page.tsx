@@ -42,11 +42,12 @@ export default async function RoomPage({
   // "?basic=1" brings back the classroom's own Record button, as a way out if the new buttons ever fail.
   const ownControls = isStaff && recordingMode() === "cloud" && sp.basic !== "1";
   const quality = parseQuality(process.env.DAILY_RECORDING_QUALITY);
+  const room = roomUrl(session.room_name);
 
-  let url = "";
+  let token = "";
   let failed = false;
   try {
-    const token = await createToken({
+    token = await createToken({
       room: session.room_name,
       userName: profile.full_name ?? (isStaff ? "Tutor" : "Student"),
       userId: user.id,
@@ -55,7 +56,6 @@ export default async function RoomPage({
       nbfUnix: isStaff ? undefined : startS,
       showRecordButton: !ownControls,
     });
-    url = `${roomUrl(session.room_name)}?t=${token}`;
   } catch (e) {
     console.error("room token failed:", e);
     failed = true;
@@ -84,7 +84,14 @@ export default async function RoomPage({
           Recording is not automatic. Press Record in the toolbar once students have joined, and check it shows as recording.
         </p>
       )}
-      <ClassroomFrame url={url} title={c.title} ownControls={ownControls} quality={quality} />
+      <ClassroomFrame
+        url={`${room}?t=${token}`}
+        roomUrl={room}
+        token={token}
+        title={c.title}
+        ownControls={ownControls}
+        quality={quality}
+      />
     </main>
   );
 }

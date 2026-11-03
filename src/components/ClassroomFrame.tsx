@@ -6,20 +6,24 @@ import { recordingOptions, type RecordingQuality } from "@/lib/recording-quality
 type State = "idle" | "starting" | "on" | "stopping";
 const WAIT_MS = 20000;
 
-// The live classroom. For tutors it adds Start and Stop recording buttons that record at a smaller size.
+// The live classroom. Students get the plain classroom. Tutors get it with Start and Stop recording
+// buttons that record at a smaller size. For tutors, Daily's library creates the classroom and joins it,
+// which is what lets the buttons control the recording.
 export default function ClassroomFrame({
-  url, title, ownControls, quality,
+  url, roomUrl, token, title, ownControls, quality,
 }: {
   url: string;
+  roomUrl: string;
+  token: string;
   title: string;
   ownControls: boolean;
   quality: RecordingQuality;
 }) {
-  const frame = useRef<HTMLIFrameElement>(null);
+  const container = useRef<HTMLDivElement>(null);
   const call = useRef<DailyCall | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [state, setState] = useState<State>("idle");
-  const [ready, setReady] = useState(false);
+  const [joined, setJoined] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,11 +40,25 @@ export default function ClassroomFrame({
     (async () => {
       try {
         const Daily = (await import("@daily-co/daily-js")).default;
-        if (cancelled || !frame.current) return;
+        if (cancelled || !container.current) return;
         await Daily.getCallInstance()?.destroy();
-        if (cancelled || !frame.current) return;
-        mine = Daily.wrap(frame.current);
+        if (cancelled || !container.current) return;
+
+        mine = Daily.createFrame(container.current, {
+          iframeStyle: { width: "100%", height: "100%", border: "0" },
+          showLeaveButton: true,
+          showFullscreenButton: true,
+        });
         call.current = mine;
+
+        mine.on("joined-meeting", () => {
+          if (!cancelled) setJoined(true);
+        });
+        mine.on("left-meeting", () => {
+          settle();
+          setJoined(false);
+          setState("idle");
+        });
         mine.on("recording-started", () => {
           settle();
           setProblem(null);
@@ -55,9 +73,16 @@ export default function ClassroomFrame({
           setState("idle");
           setProblem(ev?.errorMsg ? `Daily said: ${ev.errorMsg}` : "The recording could not start.");
         });
-        setReady(true);
-      } catch {
-        if (!cancelled) setProblem("The recording buttons could not load. Use the link on the right to use the classroom's own Record button.");
+        mine.on("error", (ev?: { errorMsg?: string }) => {
+          setProblem(ev?.errorMsg ? `The classroom reported a problem: ${ev.errorMsg}` : "The classroom reported a problem.");
+        });
+
+        await mine.join({ url: roomUrl, token });
+      } catch (e) {
+        console.error("Classroom could not open:", e);
+        if (!cancelled) {
+          setProblem(`The classroom could not open here${e instanceof Error ? ` (${e.message})` : ""}. Use "Buttons not working?" to open it the standard way.`);
+        }
       }
     })();
 
@@ -67,7 +92,7 @@ export default function ClassroomFrame({
       call.current = null;
       void mine?.destroy();
     };
-  }, [ownControls]);
+  }, [ownControls, roomUrl, token]);
 
   function waitFor(message: string) {
     timer.current = setTimeout(() => {
@@ -83,7 +108,8 @@ export default function ClassroomFrame({
     setProblem(null);
     setState("starting");
     waitFor("Daily did not confirm that recording started. Look for the recording notice in the classroom, then try again.");
-    Promise.resolve(c.startRecording(recordingOptions(quality))).catch(() => {
+    Promise.resolve(c.startRecording(recordingOptions(quality))).catch((e) => {
+      console.error("startRecording failed:", e);
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
       setState("idle");
@@ -97,7 +123,8 @@ export default function ClassroomFrame({
     setProblem(null);
     setState("stopping");
     waitFor("Daily did not confirm that recording stopped. Check the classroom, and use its own controls if needed.");
-    Promise.resolve(c.stopRecording()).catch(() => {
+    Promise.resolve(c.stopRecording()).catch((e) => {
+      console.error("stopRecording failed:", e);
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
       setState("on");
@@ -116,7 +143,7 @@ export default function ClassroomFrame({
             </span>
           ) : (
             <span className="rounded bg-amber-500 px-2 py-1 text-black">
-              Not recording. Press Start recording once students have joined.
+              {joined ? "Not recording. Press Start recording once students have joined." : "Opening the classroom..."}
             </span>
           )}
           <div className="flex items-center gap-3">
@@ -126,9 +153,9 @@ export default function ClassroomFrame({
                 {state === "stopping" ? "Stopping..." : "Stop recording"}
               </button>
             ) : (
-              <button onClick={start} disabled={!ready || state === "starting"}
+              <button onClick={start} disabled={!joined || state === "starting"}
                 className="rounded-lg bg-white px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-200 disabled:opacity-60">
-                {state === "starting" ? "Starting..." : ready ? "Start recording" : "Loading..."}
+                {state === "starting" ? "Starting..." : "Start recording"}
               </button>
             )}
             <a href="?basic=1" className="text-xs underline">Buttons not working?</a>
@@ -136,13 +163,16 @@ export default function ClassroomFrame({
           {problem && <p role="alert" className="w-full text-red-300">{problem}</p>}
         </div>
       )}
-      <iframe
-        ref={frame}
-        src={url}
-        title={title}
-        allow="camera; microphone; fullscreen; display-capture; autoplay"
-        className="w-full flex-1 border-0"
-      />
+      {ownControls ? (
+        <div ref={container} className="min-h-0 w-full flex-1" />
+      ) : (
+        <iframe
+          src={url}
+          title={title}
+          allow="camera; microphone; fullscreen; display-capture; autoplay"
+          className="w-full flex-1 border-0"
+        />
+      )}
     </div>
   );
 }
