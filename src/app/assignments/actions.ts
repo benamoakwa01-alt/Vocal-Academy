@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { notifyUser } from "@/lib/notify";
 import { alertReviewersOfSubmission } from "@/lib/alerts";
+import { after } from "next/server";
+import { alertStudentsOfAssignment } from "@/lib/assignment-alerts";
 import { parseInputValue } from "@/lib/due";
 
 const get = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
@@ -58,6 +60,7 @@ export async function createAssignment(formData: FormData) {
     created_by: user.id,
   });
   if (error) redirect("/assignments/new?error=denied");
+  after(() => alertStudentsOfAssignment(newId));
 
   revalidatePath("/assignments");
   redirect(`/assignments/${newId}`);
