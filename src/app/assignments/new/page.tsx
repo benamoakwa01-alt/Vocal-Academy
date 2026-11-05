@@ -1,87 +1,407 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireAccess } from "@/lib/access";
-import { createAssignment } from "../actions";
-import { myCourseIds } from "@/lib/team";
 
-const input = "mt-1 w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black";
-const errors: Record<string, string> = {
-  missing: "Please choose a course and enter a title.",
-  day: "That day does not belong to the course you chose.",
-  denied: "You can only create assignments for courses you teach.",
+import Link from "next/link";
+import { requireAccess } from "@/lib/access";
+import { signedAudioUrl, submissionStatus } from "@/lib/assignments";
+import AssignmentStatus from "@/components/AssignmentStatus";
+import AttachmentList from "@/components/AttachmentList";
+import AssignmentDue from "@/components/AssignmentDue";
+import DueDatePanel from "@/components/DueDatePanel";
+import ConfirmButton from "@/components/ConfirmButton";
+import EnrollmentRequired from "@/components/EnrollmentRequired";
+import LocalTime from "@/components/LocalTime";
+import SubmissionForm from "@/components/SubmissionForm";
+import SubmissionFilesView from "@/components/SubmissionFilesView";
+import { loadSubmissionFiles } from "@/lib/submission-files";
+import { deleteAssignment } from "../actions";
+
+type Asg = {
+  id: string;
+  title: string;
+  instructions: string | null;
+  course_id: string;
+  courses: { title: string; instructor_id: string | null } | null;
+  course_sessions: { day_number: number | null; title: string } | null;
 };
 
-export default async function NewAssignmentPage({
+type Sub = {
+  id: string;
+  student_id: string;
+  text_body: string | null;
+  audio_path: string | null;
+  submitted_at: string;
+  updated_at: string;
+};
+
+type Fb = {
+  submission_id: string;
+  comment: string | null;
+  score: number | null;
+  audio_path: string | null;
+  needs_revision: boolean;
+  updated_at: string;
+};
+
+const errors: Record<string, string> = {
+  empty: "Add a written answer, a recording, or both.",
+  audio: "That recording could not be used. Please record it again.",
+  locked: "This work has already been reviewed, so it can no longer be changed.",
+  denied: "Your enrollment is not active, so you cannot submit right now.",
+};
+
+export default async function AssignmentPage({
+  params,
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string; done?: string; reviewed?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { id } = await params;
+  const { error, done, reviewed } = await searchParams;
   const { supabase, user, profile } = await requireAccess();
-  if (profile.role === "student") redirect("/assignments");
+  const isStaff = profile.role !== "student";
 
-  const courseQuery = supabase.from("courses").select("id, title").order("title");
-  const mine = profile.role === "admin" ? [] : await myCourseIds(supabase, user.id);
-  const { data: courseData } = profile.role === "admin" ? await courseQuery : mine.length ? await courseQuery.in("id", mine) : { data: [] };
-  const courses = (courseData ?? []) as { id: string; title: string }[];
+  const { data } = await supabase
+    .from("assignments")
+    .select(
+      "id, title, instructions, course_id, courses(title, instructor_id), course_sessions(day_number, title)"
+    )
+    .eq("id", id)
+    .maybeSingle();
 
-  const { data: sessionData } = courses.length
-    ? await supabase.from("course_sessions").select("id, course_id, day_number, title")
-        .in("course_id", courses.map((c) => c.id)).order("day_number", { ascending: true })
-    : { data: [] };
-  const sessions = (sessionData ?? []) as { id: string; course_id: string; day_number: number | null; title: string }[];
+  if (!data) {
+    return (
+      <main className="min-h-screen bg-gray-50 p-6 text-gray-900">
+        <div className="mx-auto max-w-xl space-y-4">
+          <Link href="/assignments" className="text-sm underline">
+            Back to assignments
+          </Link>
+          <EnrollmentRequired
+            title="You do not have access to this assignment"
+            message="Assignments are available to students enrolled in the course."
+          />
+        </div>
+      </main>
+    );
+  }
+
+  const a = data as unknown as Asg;
+  const day = a.course_sessions?.day_number;
+
+  const header = (
+    <div className="space-y-1">
+      <Link href="/assignments" className="text-sm underline">
+        Back to assignments
+      </Link>
+
+      <h1 className="pt-2 text-2xl font-bold">{a.title}</h1>
+
+      <p className="text-sm text-gray-600">
+        {a.courses?.title}
+        {day ? ` · Day ${day}` : ""}
+      </p>
+
+      {a.instructions && (
+        <p className="whitespace-pre-line pt-2 text-gray-700">
+          {a.instructions.split(/(https?:\/\/[^\s]+)/g).map((part, index) =>
+            /^https?:\/\//i.test(part) ? (
+              <a
+                key={index}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-blue-600 underline"
+              >
+                {part}
+              </a>
+            ) : (
+              part
+            )
+          )}
+        </p>
+      )}
+    </div>
+  );
+
+  // ---------- Staff view ----------
+  if (isStaff) {
+    const { data: sData } = await supabase
+      .from("submissions")
+      .select("id, student_id, text_body, audio_path, submitted_at, updated_at")
+      .eq("assignment_id", id);
+
+    const subs = (sData ?? []) as Sub[];
+
+    const { data: fData } = subs.length
+      ? await supabase
+          .from("feedback")
+          .select(
+            "submission_id, comment, score, audio_path, needs_revision, updated_at"
+          )
+          .in(
+            "submission_id",
+            subs.map((s) => s.id)
+          )
+      : { data: [] };
+
+    const fbBySub = new Map(
+      ((fData ?? []) as Fb[]).map((f) => [f.submission_id, f])
+    );
+
+    const { data: pData } = subs.length
+      ? await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in(
+            "id",
+            subs.map((s) => s.student_id)
+          )
+      : { data: [] };
+
+    const nameOf = new Map(
+      ((pData ?? []) as { id: string; full_name: string | null }[]).map((p) => [
+        p.id,
+        p.full_name ?? "Unnamed",
+      ])
+    );
+
+    const { data: eData } = await supabase
+      .from("enrollments")
+      .select("student_id, profiles!student_id(full_name)")
+      .eq("course_id", a.course_id)
+      .eq("status", "active");
+
+    const submitted = new Set(subs.map((s) => s.student_id));
+
+    const missing = (
+      (eData ?? []) as unknown as {
+        student_id: string;
+        profiles: { full_name: string | null } | null;
+      }[]
+    ).filter((e) => !submitted.has(e.student_id));
+
+    const { data: onTeam } = await supabase.rpc("is_course_instructor", {
+      cid: a.course_id,
+    });
+
+    const canDelete =
+      profile.role === "admin" ||
+      a.courses?.instructor_id === user.id ||
+      onTeam === true;
+
+    return (
+      <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
+        <div className="mx-auto max-w-3xl space-y-6">
+          {header}
+
+          {reviewed && (
+            <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
+              Feedback saved.
+            </p>
+          )}
+
+          <AssignmentDue supabase={supabase} assignmentId={a.id} />
+
+          {canDelete && (
+            <DueDatePanel supabase={supabase} assignmentId={a.id} />
+          )}
+
+          <AttachmentList
+            supabase={supabase}
+            assignmentId={a.id}
+            canManage={canDelete}
+          />
+
+          <section className="space-y-2">
+            <h2 className="text-lg font-semibold">
+              Submissions ({subs.length})
+            </h2>
+
+            {subs.length === 0 && (
+              <p className="text-sm text-gray-500">Nothing submitted yet.</p>
+            )}
+
+            <ul className="space-y-2">
+              {subs.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    href={`/assignments/${id}/submissions/${s.id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {nameOf.get(s.student_id) ?? "Unnamed"}
+                      </p>
+
+                      <p className="text-sm text-gray-600">
+                        {s.audio_path ? "Recording" : ""}
+                        {s.audio_path && s.text_body ? " and " : ""}
+                        {s.text_body ? "Written answer" : ""} ·{" "}
+                        <LocalTime iso={s.updated_at} />
+                      </p>
+                    </div>
+
+                    <AssignmentStatus
+                      status={submissionStatus(s, fbBySub.get(s.id))}
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {missing.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-lg font-semibold">
+                Not submitted yet ({missing.length})
+              </h2>
+
+              <ul className="space-y-1 text-sm text-gray-700">
+                {missing.map((m) => (
+                  <li key={m.student_id}>
+                    {m.profiles?.full_name ?? "Unnamed"}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {canDelete && (
+            <form action={deleteAssignment}>
+              <input type="hidden" name="id" value={a.id} />
+
+              <ConfirmButton
+                label="Delete this assignment"
+                message="Delete this assignment? Every student submission and all feedback for it will be deleted too."
+                className="text-sm text-red-600 underline"
+              />
+            </form>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // ---------- Student view ----------
+  const { data: subData } = await supabase
+    .from("submissions")
+    .select("id, student_id, text_body, audio_path, submitted_at, updated_at")
+    .eq("assignment_id", id)
+    .eq("student_id", user.id)
+    .maybeSingle();
+
+  const sub = (subData ?? null) as Sub | null;
+
+  const { data: fbData } = sub
+    ? await supabase
+        .from("feedback")
+        .select(
+          "submission_id, comment, score, audio_path, needs_revision, updated_at"
+        )
+        .eq("submission_id", sub.id)
+        .maybeSingle()
+    : { data: null };
+
+  const fb = (fbData ?? null) as Fb | null;
+
+  const status = submissionStatus(sub, fb);
+  const editable = status !== "reviewed";
+
+  const { data: canSubmitNew } = await supabase.rpc("can_submit", {
+    aid: id,
+  });
+
+  const { data: canEditNow } = sub
+    ? await supabase.rpc("can_edit_submission", { subid: sub.id })
+    : { data: false };
+
+  const canSubmit = canSubmitNew === true || canEditNow === true;
+
+  const audioUrl = await signedAudioUrl(supabase, sub?.audio_path ?? null);
+  const fbUrl = await signedAudioUrl(supabase, fb?.audio_path ?? null);
+
+  const files = sub ? await loadSubmissionFiles(supabase, sub.id) : [];
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
-      <div className="mx-auto max-w-2xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">New assignment</h1>
-          <Link href="/assignments" className="text-sm underline">Back to assignments</Link>
-        </div>
+      <div className="mx-auto max-w-2xl space-y-6">
+        {header}
 
-        {courses.length === 0 ? (
-          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-            You are not the instructor of any course yet, so you cannot create assignments. Ask the admin to set you as a course instructor.
+        <AssignmentStatus status={status} />
+
+        <AssignmentDue supabase={supabase} assignmentId={id} />
+
+        {done && (
+          <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
+            Saved. Your tutor will review it.
           </p>
+        )}
+
+        <AttachmentList
+          supabase={supabase}
+          assignmentId={a.id}
+          canManage={false}
+        />
+
+        {fb && (
+          <section className="space-y-3 rounded-xl bg-white p-5 shadow">
+            <h2 className="font-semibold">Feedback from your tutor</h2>
+
+            {fb.needs_revision && (
+              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                Your tutor has asked you to revise and resubmit.
+              </p>
+            )}
+
+            {fb.score !== null && (
+              <p className="text-lg font-semibold">{fb.score} / 100</p>
+            )}
+
+            {fb.comment && (
+              <p className="whitespace-pre-line text-gray-700">
+                {fb.comment}
+              </p>
+            )}
+
+            {fbUrl && <audio controls src={fbUrl} className="w-full" />}
+          </section>
+        )}
+
+        {editable && canSubmit === true ? (
+          <SubmissionForm
+            assignmentId={id}
+            initialText={sub?.text_body ?? ""}
+            initialAudioPath={sub?.audio_path ?? ""}
+            initialAudioUrl={audioUrl}
+            error={error ? errors[error] ?? "Something went wrong." : null}
+            isResubmit={!!sub}
+            initialFiles={files}
+          />
         ) : (
-          <form action={createAssignment} className="space-y-4 rounded-xl bg-white p-5 shadow">
-            <label className="block text-sm">Course
-              <select name="course_id" required defaultValue="" className={input}>
-                <option value="" disabled>Choose a course...</option>
-                {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-              </select>
-            </label>
-            <label className="block text-sm">Day (optional)
-              <select name="course_session_id" defaultValue="" className={input}>
-                <option value="">Not tied to a day</option>
-                {courses.map((c) => (
-                  <optgroup key={c.id} label={c.title}>
-                    {sessions.filter((s) => s.course_id === c.id).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.day_number ? `Day ${s.day_number}: ` : ""}{s.title}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">Title
-              <input name="title" required className={input} />
-            </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm">Due date and time (optional, Ghana time)
-                <input name="due_at" type="datetime-local" className={input} />
-              </label>
-              <label className="block text-sm">Stop accepting work after (optional)
-                <input name="closes_at" type="datetime-local" className={input} />
-              </label>
-            </div>
-            <label className="block text-sm">Instructions
-              <textarea name="instructions" rows={6} className={input} />
-            </label>
-            {error && <p className="text-sm text-red-600">{errors[error] ?? "Something went wrong."}</p>}
-            <button className="rounded-lg bg-black px-5 py-2.5 text-white hover:bg-gray-800">Create assignment</button>
-          </form>
+          <section className="space-y-3 rounded-xl bg-white p-5 shadow">
+            <h2 className="font-semibold">Your submission</h2>
+
+            {!sub && (
+              <p className="text-sm text-gray-600">
+                Submissions are closed for this assignment.
+              </p>
+            )}
+
+            {sub?.text_body && (
+              <p className="whitespace-pre-line text-gray-700">
+                {sub.text_body}
+              </p>
+            )}
+
+            {audioUrl && <audio controls src={audioUrl} className="w-full" />}
+
+            <SubmissionFilesView files={files} />
+
+            {sub && (
+              <p className="text-xs text-gray-500">
+                Submitted <LocalTime iso={sub.updated_at} />
+              </p>
+            )}
+          </section>
         )}
       </div>
     </main>
