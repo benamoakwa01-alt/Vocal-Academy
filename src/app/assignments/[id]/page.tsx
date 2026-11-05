@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { requireAccess } from "@/lib/access";
 import { signedAudioUrl, submissionStatus } from "@/lib/assignments";
@@ -63,7 +64,25 @@ export default async function AssignmentPage({
       <Link href="/assignments" className="text-sm underline">Back to assignments</Link>
       <h1 className="pt-2 text-2xl font-bold">{a.title}</h1>
       <p className="text-sm text-gray-600">{a.courses?.title}{day ? ` · Day ${day}` : ""}</p>
-      {a.instructions && <p className="whitespace-pre-line pt-2 text-gray-700">{a.instructions}</p>}
+      {a.instructions && (
+        <p className="whitespace-pre-line pt-2 text-gray-700">
+          {a.instructions.split(/(https?:\/\/[^\s]+)/g).map((part, index) =>
+            /^https?:\/\//i.test(part) ? (
+              <a
+                key={index}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-blue-600 underline"
+              >
+                {part}
+              </a>
+            ) : (
+              part
+            )
+          )}
+        </p>
+      )}
     </div>
   );
 
