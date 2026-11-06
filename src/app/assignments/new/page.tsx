@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { createAssignment } from "../actions";
 import { myCourseIds } from "@/lib/team";
+import CohortSelect from "@/components/CohortSelect";
 
 const input = "mt-1 w-full rounded-lg border border-gray-300 bg-white p-2.5 text-black";
 const errors: Record<string, string> = {
@@ -68,6 +69,7 @@ export default async function NewAssignmentPage({
             <label className="block text-sm">Title
               <input name="title" required className={input} />
             </label>
+            <CohortSelect supabase={supabase} />
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">Due date and time (optional, Ghana time)
                 <input name="due_at" type="datetime-local" className={input} />

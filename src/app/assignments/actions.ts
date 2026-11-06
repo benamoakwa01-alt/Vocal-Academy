@@ -38,7 +38,14 @@ export async function createAssignment(formData: FormData) {
   const { supabase, user, profile } = await requireAccess();
   if (profile.role === "student") redirect("/assignments");
 
-  const course_id = get(formData, "course_id");
+  let course_id = get(formData, "course_id");
+  // A cohort chosen on the form decides the course, so the two can never disagree
+  const cohortId = get(formData, "cohort_id") || null;
+  if (cohortId) {
+    const { data: k } = await supabase.from("cohorts").select("course_id").eq("id", cohortId).maybeSingle();
+    if (!k) redirect("/assignments/new?error=denied");
+    course_id = k.course_id;
+  }
   const sessionId = get(formData, "course_session_id") || null;
   const title = get(formData, "title");
   if (!title || !course_id) redirect("/assignments/new?error=missing");
@@ -53,6 +60,7 @@ export async function createAssignment(formData: FormData) {
     id: newId,
     course_id,
     course_session_id: sessionId,
+    cohort_id: cohortId,
     title,
     instructions: get(formData, "instructions") || null,
     due_at: when(formData, "due_at"),

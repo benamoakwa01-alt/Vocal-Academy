@@ -51,10 +51,10 @@ export async function loadCourseData(supabase: SupabaseClient, courseId: string,
   }
 
   const { data: aData } = await supabase
-    .from("assignments").select("id, title, weight, counts_toward_grade, due_at")
+    .from("assignments").select("id, title, weight, counts_toward_grade, due_at, cohort_id")
     .eq("course_id", courseId).order("created_at", { ascending: true });
-  const assignments = ((aData ?? []) as { id: string; title: string; weight: number | string; counts_toward_grade: boolean; due_at: string | null }[])
-    .map((a) => ({ id: a.id, title: a.title, weight: Number(a.weight), counts: a.counts_toward_grade, due_at: a.due_at }));
+  const assignments = ((aData ?? []) as { id: string; title: string; weight: number | string; counts_toward_grade: boolean; due_at: string | null; cohort_id: string | null }[])
+    .map((a) => ({ id: a.id, title: a.title, weight: Number(a.weight), counts: a.counts_toward_grade, due_at: a.due_at, cohort_id: a.cohort_id }));
   const dueOf = new Map(assignments.map((a) => [a.id, a.due_at]));
 
   const subs: { id: string; assignment_id: string; student_id: string; submitted_at: string; updated_at: string }[] = [];

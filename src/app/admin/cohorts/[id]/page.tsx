@@ -36,7 +36,8 @@ export default async function CohortPage({
 
   // "profiles!student_id" picks the student link (an enrollment also links to the admin who confirmed it)
   const { data: memberData, error: memberErr } = await supabase
-    .from("enrollments").select("id, student_id, profiles!student_id(full_name, email)").eq("cohort_id", id);
+    .from("enrollments").select("id, student_id, profiles!student_id(full_name, email)").eq("cohort_id", id)
+    .in("status", ["active", "paused", "completed"]);
   const members = (memberData ?? []) as unknown as Row[];
 
   const { data: waitData } = await supabase

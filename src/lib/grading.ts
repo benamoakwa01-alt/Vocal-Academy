@@ -188,7 +188,7 @@ export type CourseData = {
   scheme: Scheme;
   classes: { id: string; title: string; starts_at: string; cohort_id: string | null }[]; // completed classes of the course
   attendance: Record<string, "present" | "excused">; // key: classId:studentId
-  assignments: { id: string; title: string; weight: number; counts: boolean; due_at: string | null }[];
+  assignments: { id: string; title: string; weight: number; counts: boolean; due_at: string | null; cohort_id: string | null }[];
   work: Record<string, { state: WorkState; score: number | null; late: boolean }>; // key: assignmentId:studentId
 };
 
@@ -204,7 +204,10 @@ export function toInput(
     starts_at: c.starts_at,
     status: data.attendance[`${c.id}:${who.student_id}`] ?? "absent",
   }));
-  const work: WorkRecord[] = data.assignments.map((a) => {
+  // An assignment given to one cohort only counts for the students of that cohort
+  const work: WorkRecord[] = data.assignments
+    .filter((a) => !a.cohort_id || a.cohort_id === who.cohort_id)
+    .map((a) => {
     const w = data.work[`${a.id}:${who.student_id}`];
     const notYetDue = !!a.due_at && data.now < Date.parse(a.due_at);
     return {

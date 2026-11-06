@@ -186,13 +186,14 @@ async function reminderPass(admin: SupabaseClient, dryRun: boolean, now: number)
   let students = 0;
   const from = new Date(now).toISOString();
   const to = new Date(now + 36 * 3600000).toISOString();
-  const { data: due } = await admin.from("assignments").select("id, title, course_id, due_at").gt("due_at", from).lte("due_at", to);
-  for (const a of (due ?? []) as { id: string; title: string; course_id: string; due_at: string }[]) {
-    const { data: enr } = await admin.from("enrollments").select("student_id").eq("course_id", a.course_id).eq("status", "active");
+  const { data: due } = await admin.from("assignments").select("id, title, course_id, due_at, cohort_id").gt("due_at", from).lte("due_at", to);
+  for (const a of (due ?? []) as { id: string; title: string; course_id: string; due_at: string; cohort_id: string | null }[]) {
+    const { data: enr } = await admin.from("enrollments").select("student_id, cohort_id").eq("course_id", a.course_id).eq("status", "active");
     const { data: subs } = await admin.from("submissions").select("student_id").eq("assignment_id", a.id);
     const handed = new Set(((subs ?? []) as { student_id: string }[]).map((s) => s.student_id));
-    for (const e of (enr ?? []) as { student_id: string }[]) {
+    for (const e of (enr ?? []) as { student_id: string; cohort_id: string | null }[]) {
       if (handed.has(e.student_id)) continue;
+      if (a.cohort_id && e.cohort_id !== a.cohort_id) continue;
       if (dryRun) {
         students += 1;
         continue;

@@ -6,6 +6,7 @@ import AssignmentStatus from "@/components/AssignmentStatus";
 import AttachmentList from "@/components/AttachmentList";
 import AssignmentDue from "@/components/AssignmentDue";
 import DueDatePanel from "@/components/DueDatePanel";
+import AudiencePanel from "@/components/AudiencePanel";
 import ConfirmButton from "@/components/ConfirmButton";
 import EnrollmentRequired from "@/components/EnrollmentRequired";
 import LocalTime from "@/components/LocalTime";
@@ -42,7 +43,7 @@ export default async function AssignmentPage({
 
   const { data } = await supabase
     .from("assignments")
-    .select("id, title, instructions, course_id, courses(title, instructor_id), course_sessions(day_number, title)")
+    .select("id, title, instructions, course_id, cohort_id, courses(title, instructor_id), course_sessions(day_number, title)")
     .eq("id", id).maybeSingle();
 
   if (!data) {
@@ -102,7 +103,8 @@ export default async function AssignmentPage({
     const nameOf = new Map(((pData ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? "Unnamed"]));
 
     const { data: eData } = await supabase
-      .from("enrollments").select("student_id, profiles!student_id(full_name)").eq("course_id", a.course_id).eq("status", "active");
+      .from("enrollments").select("student_id, profiles!student_id(full_name)").eq("course_id", a.course_id).eq("status", "active")
+      .or((a as unknown as { cohort_id?: string | null }).cohort_id ? `cohort_id.eq.${(a as unknown as { cohort_id?: string | null }).cohort_id}` : "id.not.is.null");
     const submitted = new Set(subs.map((s) => s.student_id));
     const missing = ((eData ?? []) as unknown as { student_id: string; profiles: { full_name: string | null } | null }[])
       .filter((e) => !submitted.has(e.student_id));
@@ -117,6 +119,7 @@ export default async function AssignmentPage({
           {reviewed && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Feedback saved.</p>}
           <AssignmentDue supabase={supabase} assignmentId={a.id} />
           {canDelete && <DueDatePanel supabase={supabase} assignmentId={a.id} />}
+          {canDelete && <AudiencePanel supabase={supabase} assignmentId={a.id} />}
           <AttachmentList supabase={supabase} assignmentId={a.id} canManage={canDelete} />
 
           <section className="space-y-2">

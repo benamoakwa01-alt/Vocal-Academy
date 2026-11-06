@@ -3,18 +3,22 @@ import { pushNotice } from "@/lib/notices";
 import { sendEmail } from "@/lib/email";
 import { assignmentNotice } from "@/lib/assignment-notice";
 
-// Tells every active student of the course that an assignment has been posted.
+// Tells the active students an assignment is for (one cohort, or the whole course) that it has been posted.
 // This never breaks what the tutor was doing, so any failure is only logged.
 export async function alertStudentsOfAssignment(assignmentId: string) {
   try {
     const admin = createAdminClient();
     const { data: a } = await admin
-      .from("assignments").select("id, title, course_id, due_at").eq("id", assignmentId).maybeSingle();
+      .from("assignments").select("id, title, course_id, due_at, cohort_id").eq("id", assignmentId).maybeSingle();
     if (!a) return;
     const { data: course } = await admin.from("courses").select("title").eq("id", a.course_id).maybeSingle();
     const { data: enrolled } = await admin
-      .from("enrollments").select("student_id").eq("course_id", a.course_id).eq("status", "active");
-    const ids = [...new Set(((enrolled ?? []) as { student_id: string }[]).map((e) => e.student_id))];
+      .from("enrollments").select("student_id, cohort_id").eq("course_id", a.course_id).eq("status", "active");
+    const ids = [...new Set(
+      ((enrolled ?? []) as { student_id: string; cohort_id: string | null }[])
+        .filter((e) => !a.cohort_id || e.cohort_id === a.cohort_id)
+        .map((e) => e.student_id)
+    )];
     if (ids.length === 0) return;
 
     const { data: people } = await admin.from("profiles").select("id, email").in("id", ids);
