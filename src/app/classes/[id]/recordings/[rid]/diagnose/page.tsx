@@ -2,70 +2,41 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/session";
 import { getNow } from "@/lib/classes";
 import { recordingAccessLink } from "@/lib/daily";
+import { probe, type Probe } from "@/lib/probe-fetch";
 import { layoutOf, totalFromContentRange, type Layout } from "@/lib/mp4-probe";
 import { PageHeader, Panel } from "@/components/ui";
 
-type Part = {
-  status: number; ms: number; ttfb: number; body: Uint8Array;
-  acceptRanges: string | null; contentRange: string | null; contentLength: string | null;
-  contentType: string | null; disposition: string | null;
-};
+// This page makes a few requests to the storage, each with its own short timer
+export const maxDuration = 60;
 
-// Reads at most `limit` bytes, then stops, so a server that ignores the range cannot make us download a whole file
-async function readUpTo(res: Response, limit: number): Promise<Uint8Array> {
-  const reader = res.body?.getReader();
-  if (!reader) return new Uint8Array(0);
-  const chunks: Uint8Array[] = [];
-  let n = 0;
-  while (n < limit) {
-    const { done, value } = await reader.read();
-    if (done || !value) break;
-    chunks.push(value);
-    n += value.length;
-  }
-  await reader.cancel().catch(() => undefined);
-  const out = new Uint8Array(Math.min(n, limit));
-  let o = 0;
-  for (const c of chunks) {
-    if (o >= out.length) break;
-    const piece = c.subarray(0, out.length - o);
-    out.set(piece, o);
-    o += piece.length;
-  }
-  return out;
+function show(p: Probe | null, label: string): [string, string] {
+  if (!p) return [label, "not run"];
+  if (p.error) return [label, `failed: ${p.error}`];
+  const ttfb = p.ttfb !== null ? `${p.ttfb} ms to start answering` : "";
+  return [label, `status ${p.status}, ${ttfb}, ${p.ms} ms in total${p.interrupted ? " (stopped early)" : ""}`];
 }
 
-async function fetchPart(url: string, range: string, limit: number): Promise<Part | { error: string }> {
-  try {
-    const t0 = getNow();
-    const res = await fetch(url, { headers: { Range: range }, cache: "no-store" });
-    const ttfb = getNow() - t0;
-    const body = await readUpTo(res, limit);
-    return {
-      status: res.status, ms: getNow() - t0, ttfb, body,
-      acceptRanges: res.headers.get("accept-ranges"), contentRange: res.headers.get("content-range"),
-      contentLength: res.headers.get("content-length"), contentType: res.headers.get("content-type"),
-      disposition: res.headers.get("content-disposition"),
-    };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+function verdict(first: Probe, rangeWorks: boolean, layout: Layout, totalMb: number | null, mbPerSec: number | null) {
+  if (first.error) {
+    return `The storage did not answer even a request for a single byte (${first.error}). From our server it is slow to respond, which fits what you see in Ghana: the video box waits a long time before anything plays.`;
   }
-}
-
-const isPart = (p: Part | { error: string }): p is Part => !("error" in p);
-
-function verdict(rangeWorks: boolean, layout: Layout, totalMb: number | null) {
+  if (first.status !== null && first.status >= 400) {
+    return `The storage refused the request (status ${first.status}). The link may have expired, or something is blocking it.`;
+  }
   if (!rangeWorks) {
     return `The storage does not allow the video to be fetched in pieces. A browser then has to download the whole file${totalMb ? ` (${totalMb} MB)` : ""} before it can start playing. That would explain the long wait, and it would get worse for longer lessons.`;
   }
-  if (layout === "moov-at-end") {
-    return "The file's index sits at the very end, so the player must make an extra trip to the end of the file before it can start. Pieces are allowed, so this should be quick. If the wait is still long, the cause is mostly the network between Ghana and the storage.";
+  if (mbPerSec !== null && mbPerSec < 0.7) {
+    return "Pieces are allowed, but the storage sends data slowly even to our server. The slowness is on the storage's side, so a different place to keep the video is likely the real fix.";
   }
-  if (layout === "faststart") {
-    return "The file is laid out for a quick start, and pieces are allowed. The wait is then mostly the network speed between Ghana and the storage, not the file.";
+  if (layout === "moov-at-end") {
+    return "The file's index sits at the very end, so the player must make an extra trip to the end before it can start. Pieces are allowed, so this should be quick if the network is fine.";
   }
   if (layout === "fragmented") {
     return "The file is built in many small pieces with no single index. Some browsers, Safari especially, can show a wrong or growing length for such files while they download. This fits the iPhone student's report.";
+  }
+  if (layout === "faststart") {
+    return "The file is laid out for a quick start, and pieces are allowed. The wait is then mostly the network between Ghana and the storage, not the file.";
   }
   return "The file's layout could not be read. Send me the table below and I will work it out.";
 }
@@ -87,75 +58,77 @@ export default async function DiagnosePage({ params }: { params: Promise<{ id: s
 
   let link = "";
   let linkError: string | null = null;
+  const tLink = getNow();
   try {
     link = await recordingAccessLink(rec.provider_recording_id);
   } catch (e) {
     linkError = e instanceof Error ? e.message : String(e);
   }
+  const linkMs = getNow() - tLink;
 
-  let head: Part | { error: string } | null = null;
-  let tail: Part | { error: string } | null = null;
-  let speed: Part | { error: string } | null = null;
+  let first: Probe | null = null;
+  let head: Probe | null = null;
+  let tail: Probe | null = null;
+  let speed: Probe | null = null;
   let total: number | null = null;
 
   if (!linkError) {
-    head = await fetchPart(link, "bytes=0-65535", 65536);
-    if (isPart(head)) {
-      total = totalFromContentRange(head.contentRange) ?? (head.status === 200 && head.contentLength ? Number(head.contentLength) : null);
-      const rangeWorks = head.status === 206;
-      if (rangeWorks && total && total > 131072) tail = await fetchPart(link, `bytes=${total - 65536}-${total - 1}`, 65536);
-      const from = rangeWorks && total && total > 8_000_000 ? 2_000_000 : 0;
-      speed = await fetchPart(link, `bytes=${from}-${from + 4_000_000}`, 4_000_000);
+    first = await probe(link, "bytes=0-0", 1, 8000, getNow);
+    if (!first.error && first.status !== null && first.status < 400) {
+      total = totalFromContentRange(first.contentRange) ?? (first.status === 200 && first.contentLength ? Number(first.contentLength) : null);
+      head = await probe(link, "bytes=0-65535", 65536, 8000, getNow);
+      if (first.status === 206 && total && total > 131072) {
+        tail = await probe(link, `bytes=${total - 65536}-${total - 1}`, 65536, 8000, getNow);
+      }
+      const from = first.status === 206 && total && total > 8_000_000 ? 2_000_000 : 0;
+      speed = await probe(link, `bytes=${from}-${from + 1_999_999}`, 2_000_000, 10000, getNow);
     }
   }
 
-  const headOk = head && isPart(head) ? head : null;
-  const tailOk = tail && isPart(tail) ? tail : null;
-  const speedOk = speed && isPart(speed) ? speed : null;
-  const rangeWorks = headOk?.status === 206;
-  const { layout, boxes } = headOk ? layoutOf(headOk.body, tailOk?.body ?? null) : { layout: "unknown" as Layout, boxes: [] as string[] };
+  const rangeWorks = first?.status === 206;
+  const headBody = head && !head.error ? head.body : null;
+  const { layout, boxes } = headBody ? layoutOf(headBody, tail && !tail.error ? tail.body : null) : { layout: "unknown" as Layout, boxes: [] as string[] };
   const totalMb = total ? Math.round(total / 1e6) : null;
-  const mbPerSec = speedOk && speedOk.ms > 0 ? (speedOk.body.length / 1e6) / (speedOk.ms / 1000) : null;
+  const sendMs = speed && !speed.error ? Math.max(1, speed.ms - (speed.ttfb ?? 0)) : null;
+  const mbPerSec = speed && !speed.error && sendMs ? speed.body.length / 1e6 / (sendMs / 1000) : null;
 
-  const rows: [string, string][] = headOk
-    ? [
-        ["File size", totalMb ? `${totalMb} MB` : "not stated"],
-        ["Can it be fetched in pieces?", rangeWorks ? "Yes (status 206)" : `No (status ${headOk.status}). The whole file is sent.`],
-        ["Accept-Ranges header", headOk.acceptRanges ?? "not sent"],
-        ["Content type", headOk.contentType ?? "not stated"],
-        ["Content-Disposition", headOk.disposition ?? "not sent"],
-        ["File layout", layout],
-        ["Parts of the file seen at the start", boxes.join(", ") || "none"],
-        ["Time to first byte (from our server)", `${headOk.ttfb} ms`],
-        ["Speed from our server to the storage", mbPerSec ? `${mbPerSec.toFixed(1)} MB per second` : "not measured"],
-      ]
-    : [];
+  const rows: [string, string][] = [
+    ["Getting the recording link from Daily", linkError ? `failed: ${linkError}` : `${linkMs} ms`],
+    show(first, "Asking for 1 byte"),
+    show(head, "Asking for the first 64 KB"),
+    show(tail, "Asking for the last 64 KB"),
+    show(speed, "Asking for 2 MB"),
+    ["File size", totalMb ? `${totalMb} MB` : "not known"],
+    ["Can it be fetched in pieces?", first && !first.error ? (rangeWorks ? "Yes (status 206)" : `No (status ${first.status}). The whole file is sent.`) : "not known"],
+    ["Accept-Ranges header", first?.acceptRanges ?? "not seen"],
+    ["Content type", first?.contentType ?? "not seen"],
+    ["File layout", layout],
+    ["Parts of the file seen at the start", boxes.join(", ") || "none"],
+    ["Speed from our server to the storage", mbPerSec !== null ? `${mbPerSec.toFixed(2)} MB per second (${speed?.body.length ?? 0} bytes received)` : "not measured"],
+  ];
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
       <PageHeader title="Recording check" description="Why a recording may be slow to start. Admin only." />
       {linkError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Could not get the recording link: {linkError}</p>}
-      {head && !isPart(head) && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Could not reach the storage: {head.error}</p>}
-      {headOk && (
-        <>
-          <Panel title="What this means">
-            <p className="text-sm text-[#17253B]">{verdict(rangeWorks, layout, totalMb)}</p>
-          </Panel>
-          <Panel title="The details">
-            <dl className="divide-y divide-gray-100 text-sm">
-              {rows.map(([k, v]) => (
-                <div key={k} className="flex flex-wrap justify-between gap-3 py-2">
-                  <dt className="text-[#647084]">{k}</dt>
-                  <dd className="font-medium text-[#17253B]">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-3 text-xs text-[#647084]">
-              The speeds above are measured from our server, which is close to Daily&apos;s storage, so they look fast. They say nothing about Ghana. What matters here is whether pieces are allowed and how the file is laid out.
-            </p>
-          </Panel>
-        </>
+      {first && (
+        <Panel title="What this means">
+          <p className="text-sm text-[#17253B]">{verdict(first, rangeWorks, layout, totalMb, mbPerSec)}</p>
+        </Panel>
       )}
+      <Panel title="The details">
+        <dl className="divide-y divide-gray-100 text-sm">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex flex-wrap justify-between gap-3 py-2">
+              <dt className="text-[#647084]">{k}</dt>
+              <dd className={`font-medium ${v.startsWith("failed") ? "text-red-700" : "text-[#17253B]"}`}>{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-3 text-xs text-[#647084]">
+          These requests come from our server, not from Ghana. What matters here is whether the storage answers quickly, whether pieces are allowed, and how the file is built.
+        </p>
+      </Panel>
     </main>
   );
 }
