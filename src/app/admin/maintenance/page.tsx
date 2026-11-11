@@ -6,6 +6,8 @@ const names: Record<string, string> = {
   recordings: "Recording check", preview: "Preview of the daily tasks (nothing was changed)", daily: "Daily tasks",
 };
 
+export const maxDuration = 60;
+
 export default async function MaintenancePage({ searchParams }: { searchParams: Promise<{ which?: string; r?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
@@ -16,6 +18,9 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
     ["Scheduled-job password", "CRON_SECRET", setting("CRON_SECRET")],
     ["Daily key", "DAILY_API_KEY", setting("DAILY_API_KEY")],
     ["Email sender", "GMAIL_USER", setting("GMAIL_USER")],
+    ["Google Drive client", "GOOGLE_CLIENT_ID", setting("GOOGLE_CLIENT_ID")],
+    ["Google Drive secret", "GOOGLE_CLIENT_SECRET", setting("GOOGLE_CLIENT_SECRET")],
+    ["Google Drive access key", "GOOGLE_REFRESH_TOKEN", setting("GOOGLE_REFRESH_TOKEN")],
   ];
 
   const head = { count: "exact" as const, head: true };

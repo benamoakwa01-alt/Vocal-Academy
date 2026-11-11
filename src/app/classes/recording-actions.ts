@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAccess } from "@/lib/access";
 import { syncClassRecordings } from "@/lib/recordings";
+import { after } from "next/server";
+import { startDriveCopy } from "@/lib/drive-copy";
 
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
@@ -31,6 +33,7 @@ async function change(formData: FormData, patch: Record<string, unknown>, onlyIf
 }
 
 export async function approveRecording(formData: FormData) {
+  after(() => startDriveCopy(text(formData, "id")));
   return change(formData, { status: "ready" }, { column: "status", value: "review" });
 }
 export async function hideRecording(formData: FormData) {

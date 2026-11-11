@@ -3,6 +3,8 @@ import { authorizedCron } from "@/lib/cron";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runRecordingCheck } from "@/lib/jobs";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   if (!authorizedCron(request)) return new NextResponse("Unauthorized", { status: 401 });
   try {

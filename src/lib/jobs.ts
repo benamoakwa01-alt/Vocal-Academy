@@ -6,6 +6,7 @@ import { pushNotice } from "@/lib/notices";
 import { sendEmail } from "@/lib/email";
 import { submissionStatus } from "@/lib/assignments";
 import { formatWhen } from "@/lib/due";
+import { deleteDriveCopy, runDrivePass, type DrivePass } from "@/lib/drive-copy";
 
 const DAY = 86400000;
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -17,7 +18,7 @@ function chunk<T>(list: T[], size = 40) {
 const sameTime = (a: string | null, b: string | null) => (a === null || b === null ? a === b : Date.parse(a) === Date.parse(b));
 
 // ---------------------------------------------------------------- Recording check
-export type RecordingCheck = { closed: number; checked: number; found: number; failed: number; errors: string[] };
+export type RecordingCheck = { closed: number; checked: number; found: number; failed: number; errors: string[]; drive?: DrivePass };
 
 // Finds new recordings without anyone opening a page, and closes classes that were never ended in the app
 export async function runRecordingCheck(admin: SupabaseClient, now: number = Date.now()): Promise<RecordingCheck> {
@@ -56,6 +57,11 @@ export async function runRecordingCheck(admin: SupabaseClient, now: number = Dat
       out.failed += 1;
       if (out.errors.length < 3) out.errors.push(res.detail);
     }
+  }
+  try {
+    out.drive = await runDrivePass(admin);
+  } catch (e) {
+    out.errors.push(msg(e));
   }
   return out;
 }
@@ -138,6 +144,7 @@ async function retentionPass(admin: SupabaseClient, dryRun: boolean, now: number
       if (!dryRun) {
         try {
           await deleteRecording(r.provider_recording_id);
+          await deleteDriveCopy(admin, r.id);
           await admin.from("recordings").update({ purged_at: new Date(now).toISOString() }).eq("id", r.id);
         } catch (e) {
           out.errors.push(msg(e));
